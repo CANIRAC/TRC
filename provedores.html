@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proveedores</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #0f0f0f;
+      color: white;
+    }
+
+    header {
+      background: linear-gradient(135deg, #00aaff, #0088cc);
+      text-align: center;
+      padding: 30px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      position: relative;
+    }
+
+    .back-button {
+      position: absolute;
+      left: 25px;
+      top: 25px;
+      color: white;
+      font-size: 1.1rem;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 15px;
+      border-radius: 30px;
+      background: rgba(255,255,255,0.15);
+      transition: 0.3s;
+    }
+    .back-button:hover {
+      background: rgba(255,255,255,0.3);
+      transform: translateX(-5px);
+    }
+
+    .logo { max-width: 280px; height: auto; }
+    header h1 { color: white; font-size: 2.4rem; text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+
+    .search-container {
+      max-width: 500px;
+      width: 100%;
+      margin: 20px auto;
+      position: relative;
+    }
+    .search-container input {
+      width: 100%;
+      padding: 15px 20px 15px 50px;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.1rem;
+      background: white;
+      color: #222;
+    }
+    .search-container input:focus {
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(0, 170, 255, 0.3);
+    }
+    .lupa {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.4rem;
+      color: #0088cc;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      max-width: 1400px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+
+    .card {
+      height: 380px;
+      border-radius: 20px;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.4s;
+    }
+    .card:hover { transform: scale(1.05); }
+    .card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s;
+    }
+    .card:hover img { transform: scale(1.1); }
+
+    .overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.9));
+      padding: 40px 25px 25px;
+      text-align: center;
+    }
+    .card h3 { font-size: 1.6rem; margin-bottom: 8px; }
+    .giro { font-size: 1.1rem; opacity: 0.9; }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.95);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background: #ffffff;
+      color: #222;
+      max-width: 1000px;
+      width: 95%;
+      border-radius: 20px;
+      overflow: hidden;
+      max-height: 92vh;
+      box-shadow: 0 10px 30px rgba(0, 170, 255, 0.3);
+    }
+    .modal-header {
+      background: linear-gradient(135deg, #00aaff, #0088cc);
+      padding: 20px 25px;
+      text-align: center;
+      position: relative;
+      color: white;
+    }
+    .close {
+      position: absolute;
+      top: 15px;
+      right: 25px;
+      font-size: 40px;
+      cursor: pointer;
+      color: white;
+    }
+
+    .modal-body {
+      padding: 25px;
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+      overflow-y: auto;
+      max-height: calc(92vh - 80px);
+    }
+
+    .modal-seccion-img {
+      width: 100%;
+      border-radius: 12px;
+      cursor: zoom-in;
+      max-height: 380px;
+      object-fit: cover;
+    }
+
+    .modal-info {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 12px;
+      border-left: 5px solid #00aaff;
+    }
+    .modal-info h2 {
+      color: #0088cc;
+      margin-bottom: 15px;
+      font-size: 1.9rem;
+    }
+
+    .modal-video video {
+      width: 100%;
+      border-radius: 12px;
+      max-height: 420px;
+    }
+
+    .botones-modal {
+      display: flex;
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .btn {
+      flex: 1;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-whats { background: #25D366; color: white; }
+    .btn-ig { 
+      background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); 
+      color: white; 
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <!-- Flecha para regresar -->
+    <a href="index.html" class="back-button">← Volver al Inicio</a>
+
+    <img src="logo.png" alt="Logo" class="logo">
+    <h1>Proveedores</h1>
+    
+    <div class="search-container">
+      <span class="lupa">🔍</span>
+      <input type="text" id="searchInput" placeholder="Buscar proveedor... (ej: lentes, hielo, carne, fumigacion)">
+    </div>
+  </header>
+
+  <div class="grid" id="proveedores-grid"></div>
+
+  <!-- Modal -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span class="close" onclick="closeModal()">×</span>
+        <h2 id="modal-title"></h2>
+      </div>
+      <div class="modal-body">
+        <img id="modal-seccion-img" class="modal-seccion-img" onclick="zoomImage(this)" src="" alt="Publicidad">
+        
+        <div class="modal-info">
+          <h2 id="modal-nombre"></h2>
+          <p><strong>Giro:</strong> <span id="modal-giro"></span></p>
+          <p><strong>Contacto:</strong> <span id="modal-contacto"></span></p>
+          <p><strong>Teléfono:</strong> <span id="modal-tel"></span></p>
+          <p><strong>Negocio:</strong> <span id="modal-negocio"></span></p>
+
+          <div class="botones-modal">
+            <a id="modal-ig-link" href="#" target="_blank">
+              <button class="btn btn-ig">📷 Instagram</button>
+            </a>
+            <a id="modal-whats-link" href="#" target="_blank">
+              <button class="btn btn-whats">💬 WhatsApp</button>
+            </a>
+          </div>
+        </div>
+
+        <div class="modal-video">
+          <video id="modal-video" controls autoplay loop muted playsinline></video>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const proveedores = [
+      {id:1, nombre:"Opticos de Mexico", imagen:"opticosdemexico.png", imagenSeccion:"opticosdemexicoseccion.png", video:"opticosdemexico.mp4", giro:"Óptica", contacto:"Martin Venegas", tel:"871 219 2364", negocio:"871 122 9265", ig:"https://www.instagram.com/opticos_de_mexico/", whats:"https://wa.me/528712192364?text=Hola%20el%20proveedor%20Opticos%20de%20Mexico%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor", keywords:"lentes optica gafas"},
+      {id:2, nombre:"Acqua Laguna", imagen:"acqualaguna.png", imagenSeccion:"acqualagunaseccion.png", video:"acqualaguna.mp4", giro:"Máquinas de hielo", contacto:"Roberto Kuri/Mario Argumedo", tel:"871 219 5009", negocio:"871 206 1521", ig:"https://www.instagram.com/acqua.laguna/", whats:"https://wa.me/528712195009?text=Hola%20el%20proveedor%20Acqua%20Laguna%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:3, nombre:"Nuga Fumigaciones", imagen:"nugafumigaciones.png", imagenSeccion:"nugafumigacionesseccion.png", video:"nugafumigaciones.mp4", giro:"Fumigación", contacto:"Jaime Nuncio", tel:"871 471 6374", negocio:"8714716374", ig:"https://www.instagram.com/nuga_fumigaciones/", whats:"https://wa.me/528714716374?text=Hola%20el%20proveedor%20Nuga%20Fumigaciones%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:4, nombre:"Costco de México", imagen:"costco.png", imagenSeccion:"costcoseccion.png", video:"costco.mp4", giro:"Comercial", contacto:"Oscar Lael", tel:"229 436 7456", negocio:"871 253 0550", ig:"https://www.instagram.com/costco_mexico/", whats:"https://wa.me/528712530550?text=Hola%20el%20proveedor%20Costco%20de%20M%C3%A9xico%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:5, nombre:"Casa del Vino", imagen:"casadelvino.png", imagenSeccion:"casadelvinoseccion.png", video:"casadelvino.mp4", giro:"Vinos y Licores", contacto:"Alvaro Ramos", tel:"871 747 9367", negocio:"", ig:"https://www.instagram.com/casadelvinomx/", whats:"https://wa.me/528717479367?text=Hola%20el%20proveedor%20Casa%20del%20Vino%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:6, nombre:"API Fumigaciones", imagen:"apifumigaciones.png", imagenSeccion:"apifumigacionesseccion.png", video:"apifumigaciones.mp4", giro:"Fumigación", contacto:"Juan Guillen", tel:"871 235 2998", negocio:"871 235 2998", ig:"https://www.instagram.com/apifumigacion/", whats:"https://wa.me/528712352998?text=Hola%20el%20proveedor%20API%20Fumigaciones%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:7, nombre:"Ganaderia Revuelta", imagen:"ganaderiarevuelta.png", imagenSeccion:"ganaderiarevueltaseccion.png", video:"ganaderiarevuelta.mp4", giro:"Engorda, sacrificio y empaque", contacto:"Rosario Sanchez", tel:"871 161 3567", negocio:"871 747 4748", ig:"https://www.instagram.com/ganaderia.revuelta", whats:"https://wa.me/528711613567?text=Hola%20el%20proveedor%20Ganaderia%20Revuelta%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:8, nombre:"Bio Diesel", imagen:"biodiesel.png", imagenSeccion:"biodieselseccion.png", video:"biodiesel.mp4", giro:"Reciclado de Aceite Vegetal", contacto:"Carlos Rodríguez", tel:"871 583 8206", negocio:"871 583 8206", ig:"https://www.instagram.com/biodiesel_laguna/", whats:"https://wa.me/528715838206?text=Hola%20el%20proveedor%20Bio%20Diesel%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:9, nombre:"Promo Plus", imagen:"promoplus.png", imagenSeccion:"promoplusseccion.png", video:"promoplus.mp4", giro:"Promocionales y uniformes", contacto:"David Cervantes", tel:"871 598 1690", negocio:"871 722 5050", ig:"https://www.instagram.com/promoplus.promocionales/", whats:"https://wa.me/528715981690?text=Hola%20el%20proveedor%20Promo%20Plus%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:10, nombre:"Uban Life", imagen:"urbanlife.png", imagenSeccion:"urbanlifeseccion.png", video:"urbanlife.mp4", giro:"Muebles", contacto:"Huguette Quiñones", tel:"871 177 1383", negocio:"871 801 1232", ig:"https://www.instagram.com/urbanlife.mx/", whats:"https://wa.me/528711771383?text=Hola%20el%20proveedor%20Uban%20Life%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:11, nombre:"Be Clean", imagen:"beclean.png", imagenSeccion:"becleanseccion.png", video:"beclean.mp4", giro:"Limpieza y sondeo de grasa", contacto:"Melissa Mendez", tel:"871 344 9347", negocio:"871 140 1042", ig:"https://www.instagram.com/becleansolutionsmx/", whats:"https://wa.me/528713449347?text=Hola%20el%20proveedor%20Be%20Clean%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:12, nombre:"La Rancherita", imagen:"larancherita.png", imagenSeccion:"larancheritaseccion.png", video:"larancherita.mp4", giro:"Tostadas, Tortillas", contacto:"Margarita Lozano", tel:"871 218 6094", negocio:"", ig:"", whats:"https://wa.me/528712186094?text=Hola%20el%20proveedor%20La%20Rancherita%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:13, nombre:"Eco-Pack", imagen:"ecopack.png", imagenSeccion:"ecopackseccion.png", video:"ecopack.mp4", giro:"Papel grado alimenticio", contacto:"Alan Castelo", tel:"465 118 3233", negocio:"449-129-0499", ig:"https://www.instagram.com/eco.pack.mx/", whats:"https://wa.me/524651183233?text=Hola%20el%20proveedor%20Eco-Pack%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:14, nombre:"Eventival", imagen:"eventival.png", imagenSeccion:"eventivalseccion.png", video:"eventival.mp4", giro:"Organización de eventos", contacto:"Talia", tel:"871 577 5375", negocio:"871 577 5375", ig:"https://www.instagram.com/eventival.mx/", whats:"https://wa.me/528715775375?text=Hola%20el%20proveedor%20Eventival%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:15, nombre:"Peek Marketing", imagen:"peekmarketing.png", imagenSeccion:"peekmarketingseccion.png", video:"peekmarketing.mp4", giro:"Marketing y Publicidad", contacto:"Veronica Ruiz", tel:"871 235 0077", negocio:"871 235 0077", ig:"https://www.instagram.com/peek.marketing/", whats:"https://wa.me/528712350077?text=Hola%20el%20proveedor%20Peek%20Marketing%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:16, nombre:"Mr Green", imagen:"mrgreen.png", imagenSeccion:"mrgreenseccion.png", video:"mrgreen.mp4", giro:"Insumos para restaurantes", contacto:"Veronica Pedroza", tel:"871 165 1856", negocio:"871 165 1856", ig:"https://www.instagram.com/mrgreentrc/", whats:"https://wa.me/528711651856?text=Hola%20el%20proveedor%20Mr%20Green%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:17, nombre:"Maizito Tortilleria", imagen:"maizito.png", imagenSeccion:"maizitoseccion.png", video:"maizito.mp4", giro:"Tortillería", contacto:"Deyanira Morales", tel:"81 2201 3668", negocio:"871 792 2555", ig:"https://www.instagram.com/maizitotrc/", whats:"https://wa.me/528122013668?text=Hola%20el%20proveedor%20Maizito%20Tortilleria%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:18, nombre:"Garey", imagen:"garey.png", imagenSeccion:"gareyseccion.png", video:"garey.mp4", giro:"Equipo de cocina y mobiliario", contacto:"Ana Laura Garcia", tel:"871 736 2639", negocio:"871-718-1477", ig:"", whats:"https://wa.me/528717362639?text=Hola%20el%20proveedor%20Garey%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:19, nombre:"Recobsa Construcciones", imagen:"recobsa.png", imagenSeccion:"recobsaseccion.png", video:"recobsa.mp4", giro:"Construcción y Topografía", contacto:"José Manuel Cobos", tel:"871 360 9255", negocio:"871 360 9255", ig:"", whats:"https://wa.me/528713609255?text=Hola%20el%20proveedor%20Recobsa%20Construcciones%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:20, nombre:"Little Green", imagen:"littlegreen.png", imagenSeccion:"littlegreenseccion.png", video:"littlegreen.mp4", giro:"Fruta y Verdura Gourmet", contacto:"RICARDO CASTELLANOS", tel:"871 328 0792", negocio:"8712663797", ig:"https://www.instagram.com/littlegreentrc/", whats:"https://wa.me/528713280792?text=Hola%20el%20proveedor%20Little%20Green%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:21, nombre:"Agua Inmaculada Torreón", imagen:"aguainmaculada.png", imagenSeccion:"aguainmaculadaseccion.png", video:"aguainmaculada.mp4", giro:"Purificadora de agua", contacto:"Rafael Gómez", tel:"871 111 2288", negocio:"8711112288", ig:"https://www.instagram.com/aguainmaculadatrc/", whats:"https://wa.me/528711112288?text=Hola%20el%20proveedor%20Agua%20Inmaculada%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:22, nombre:"Cava Design & Decor", imagen:"cava.png", imagenSeccion:"cavaseccion.png", video:"cava.mp4", giro:"Decoración y artículos para restaurante", contacto:"Noelie Cabello", tel:"871 727 7017", negocio:"871 727 7017", ig:"https://www.instagram.com/cava.designdecor/", whats:"https://wa.me/528717277017?text=Hola%20el%20proveedor%20Cava%20Design%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:23, nombre:"Abastehogar", imagen:"abastehogar.png", imagenSeccion:"abastehogarseccion.png", video:"abastehogar.mp4", giro:"Artículos para hogar y restaurante", contacto:"Erika Murillo", tel:"871 120 0348", negocio:"871 711 0983", ig:"https://www.instagram.com/abastehogar/", whats:"https://wa.me/528711200348?text=Hola%20el%20proveedor%20Abastehogar%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:24, nombre:"Fin Wise", imagen:"finwise.png", imagenSeccion:"finwiseseccion.png", video:"finwise.mp4", giro:"Asesoría financiera", contacto:"Marco Antonio Ibarra", tel:"55 4345 8354", negocio:"", ig:"", whats:"https://wa.me/525543458354?text=Hola%20el%20proveedor%20Fin%20Wise%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:25, nombre:"Maizito Botanas", imagen:"maizitobotanas.png", imagenSeccion:"maizitobotanasseccion.png", video:"maizitobotanas.mp4", giro:"Botanas", contacto:"Deyanira Morales", tel:"81 2201 3668", negocio:"871 392 8682", ig:"https://www.instagram.com/botanasmaizitomx/", whats:"https://wa.me/528122013668?text=Hola%20el%20proveedor%20Maizito%20Botanas%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:26, nombre:"El Mariscal", imagen:"elmariscal.png", imagenSeccion:"elmariscalseccion.png", video:"elmariscal.mp4", giro:"Insumos para foodservice", contacto:"Gael Rosales", tel:"871 104 1860", negocio:"871 747 9787", ig:"https://www.instagram.com/elmariscalmx/", whats:"https://wa.me/528711041860?text=Hola%20el%20proveedor%20El%20Mariscal%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:27, nombre:"Soriana / City club", imagen:"soriana.png", imagenSeccion:"sorianaseccion.png", video:"soriana.mp4", giro:"Comercial", contacto:"Antonio Zamarripa", tel:"871 709 2773", negocio:"", ig:"", whats:"https://wa.me/528717092773?text=Hola%20el%20proveedor%20Soriana%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:28, nombre:"Morenita", imagen:"morenita.png", imagenSeccion:"morenitaseccion.png", video:"morenita.mp4", giro:"Artículos de piel", contacto:"Alejandra Hoyos", tel:"871 145 6616", negocio:"871 145 6616", ig:"https://www.instagram.com/morenitaaccesorios/", whats:"https://wa.me/528711456616?text=Hola%20el%20proveedor%20Morenita%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:29, nombre:"Interventas", imagen:"interventas.png", imagenSeccion:"interventasseccion.png", video:"interventas.mp4", giro:"Plásticos y desechables", contacto:"Andoni Esquivel", tel:"871 189 3032", negocio:"8717130198", ig:"https://www.instagram.com/grupointerventas/", whats:"https://wa.me/528711893032?text=Hola%20el%20proveedor%20Interventas%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:30, nombre:"Aldape", imagen:"aldape.png", imagenSeccion:"aldapeseccion.png", video:"aldape.mp4", giro:"Equipos para cocinas", contacto:"María del Socorro González", tel:"871 755 9513", negocio:"871 189 1921", ig:"https://www.instagram.com/aldapeyasocia2/", whats:"https://wa.me/528717559513?text=Hola%20el%20proveedor%20Aldape%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:31, nombre:"Zesati Internacional", imagen:"zesati.png", imagenSeccion:"zesatiseccion.png", video:"zesati.mp4", giro:"Servicios profesionales", contacto:"Luis Arratia", tel:"871 240 2158", negocio:"871 688 1272", ig:"https://www.instagram.com/zesatiinternacional/", whats:"https://wa.me/528712402158?text=Hola%20el%20proveedor%20Zesati%20Internacional%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:32, nombre:"Montaña Food Service", imagen:"montana.png", imagenSeccion:"montanaseccion.png", video:"montana.mp4", giro:"Comercialización de carne", contacto:"Javier Montaña", tel:"664 375 4637", negocio:"", ig:"https://www.instagram.com/jmontanav/", whats:"https://wa.me/526643754637?text=Hola%20el%20proveedor%20Montaña%20Food%20Service%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:33, nombre:"Gafi", imagen:"gafi.png", imagenSeccion:"gafiseccion.png", video:"gafi.mp4", giro:"Abarrotes al por mayor", contacto:"Alejandro Zorrilla", tel:"871 178 7580", negocio:"871 747 4645", ig:"", whats:"https://wa.me/528711787580?text=Hola%20el%20proveedor%20Gafi%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:34, nombre:"Frutiagua", imagen:"frutiagua.png", imagenSeccion:"frutiaguaseccion.png", video:"frutiagua.mp4", giro:"Aguas frescas embotelladas", contacto:"Raul de Alba", tel:"871 225 0611", negocio:"871 225 0611", ig:"", whats:"https://wa.me/528712250611?text=Hola%20el%20proveedor%20Frutiagua%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:35, nombre:"Bella Napoli El Sabino", imagen:"bellanapoli.png", imagenSeccion:"bellanapoliseccion.png", video:"bellanapoli.mp4", giro:"Insumos lácteos", contacto:"Daniel Baca", tel:"871 173 4169", negocio:"", ig:"", whats:"https://wa.me/528711734169?text=Hola%20el%20proveedor%20Bella%20Napoli%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:36, nombre:"Catorce 30 Comercializadora", imagen:"catorce30.png", imagenSeccion:"catorce30seccion.png", video:"catorce30.mp4", giro:"Comercio al por mayor", contacto:"Alberto Delgado/Alejandra Reed", tel:"443 410 1198", negocio:"871 676 4754", ig:"https://www.instagram.com/catorce30/", whats:"https://wa.me/524434101198?text=Hola%20el%20proveedor%20Catorce%2030%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:37, nombre:"Forticlean", imagen:"forticlean.png", imagenSeccion:"forticleanseccion.png", video:"forticlean.mp4", giro:"Productos de limpieza", contacto:"José Guerrero", tel:"871 104 3889", negocio:"871 736 2478", ig:"https://www.instagram.com/forticlean_trc/", whats:"https://wa.me/528711043889?text=Hola%20el%20proveedor%20Forticlean%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:38, nombre:"Mavesa de la Laguna", imagen:"mavesa.png", imagenSeccion:"mavesaseccion.png", video:"mavesa.mp4", giro:"Abarrotes", contacto:"Sofia Gomez", tel:"871 149 8119", negocio:"871 717 3032", ig:"https://www.instagram.com/mavesalaguna/", whats:"https://wa.me/528711498119?text=Hola%20el%20proveedor%20Mavesa%20de%20la%20Laguna%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:39, nombre:"GHC Industrial", imagen:"ghc.png", imagenSeccion:"ghcseccion.png", video:"ghc.mp4", giro:"Equipo de protección personal", contacto:"Ema Castillo", tel:"871 972 4199", negocio:"871 972 6660", ig:"https://www.instagram.com/ghcindustrial_/", whats:"https://wa.me/528719724199?text=Hola%20el%20proveedor%20GHC%20Industrial%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:40, nombre:"Grupo Modelo", imagen:"grupomodelo.png", imagenSeccion:"grupomodeloseccion.png", video:"grupomodelo.mp4", giro:"Distribuidora", contacto:"Valeria Torres", tel:"871 161 3282", negocio:"", ig:"", whats:"https://wa.me/528711613282?text=Hola%20el%20proveedor%20Grupo%20Modelo%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:41, nombre:"Mr Sabor", imagen:"mrsabor.png", imagenSeccion:"mrsaborseccion.png", video:"mrsabor.mp4", giro:"Alimentos", contacto:"Andrea Enriquez", tel:"871 233 1892", negocio:"871 233 9594", ig:"https://www.instagram.com/mrsabor.mx/", whats:"https://wa.me/528712331892?text=Hola%20el%20proveedor%20Mr%20Sabor%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:42, nombre:"Risanti", imagen:"risanti.png", imagenSeccion:"risantiseccion.png", video:"risanti.mp4", giro:"Mobiliario", contacto:"Ricardo Santibañez", tel:"871 734 5191", negocio:"871 563 5961", ig:"https://www.instagram.com/risantimx/", whats:"https://wa.me/528717345191?text=Hola%20el%20proveedor%20Risanti%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:43, nombre:"Sercom", imagen:"sercom.png", imagenSeccion:"sercomseccion.png", video:"sercom.mp4", giro:"Mantenimiento general", contacto:"Erick Recendiz", tel:"871 348 2812", negocio:"871 482 1252", ig:"https://www.instagram.com/sercomlaguna/", whats:"https://wa.me/528713482812?text=Hola%20el%20proveedor%20Sercom%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:44, nombre:"Bioclean Lavanderia", imagen:"bioclean.png", imagenSeccion:"biocleanseccion.png", video:"bioclean.mp4", giro:"Lavandería", contacto:"CECILIA MARTINEZ", tel:"871 113 6508", negocio:"871 267 4812", ig:"https://www.instagram.com/biocleanlavanderiatrc/", whats:"https://wa.me/528711136508?text=Hola%20el%20proveedor%20Bioclean%20Lavanderia%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:45, nombre:"Paalsa", imagen:"paalsa.png", imagenSeccion:"paalsaseccion.png", video:"paalsa.mp4", giro:"HVAC y Aire Acondicionado", contacto:"Carlos Alberto Almazan", tel:"871 143 6521", negocio:"871 980 4136", ig:"https://www.instagram.com/paalsa.mx/", whats:"https://wa.me/528711436521?text=Hola%20el%20proveedor%20Paalsa%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:46, nombre:"Mercahorro", imagen:"mercahorro.png", imagenSeccion:"mercahorroseccion.png", video:"mercahorro.mp4", giro:"Construcción comercial", contacto:"Alejandro Gayosso", tel:"81 2000 8044", negocio:"", ig:"https://www.instagram.com/mercahorroabastos/", whats:"https://wa.me/528120008044?text=Hola%20el%20proveedor%20Mercahorro%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:47, nombre:"Tortilleria Doña Toña", imagen:"donatona.png", imagenSeccion:"donatonaseccion.png", video:"donatona.mp4", giro:"Tortillería", contacto:"Francisco Javier Nava", tel:"871 177 4032", negocio:"871 713 7101", ig:"https://www.instagram.com/tortilleriadonatona/", whats:"https://wa.me/528711774032?text=Hola%20el%20proveedor%20Tortilleria%20Doña%20Toña%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:48, nombre:"RM Servicios de limpieza", imagen:"rmlimpieza.png", imagenSeccion:"rmlimpiezaseccion.png", video:"rmlimpieza.mp4", giro:"Servicios de limpieza", contacto:"Mari Amada Fernandez", tel:"871 156 0549", negocio:"871 234 6249", ig:"https://www.instagram.com/rm_serviciosdelimpieza/", whats:"https://wa.me/528711560549?text=Hola%20el%20proveedor%20RM%20Servicios%20de%20limpieza%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:49, nombre:"Cerveceria Santo Negro", imagen:"santonegro.png", imagenSeccion:"santonegroseccion.png", video:"santonegro.mp4", giro:"Cerveza artesanal", contacto:"Natalia Wolf", tel:"614 223 9289", negocio:"614 223 9289", ig:"https://www.instagram.com/cerveceriasantonegro.wb/", whats:"https://wa.me/526142239289?text=Hola%20el%20proveedor%20Cerveceria%20Santo%20Negro%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:50, nombre:"Liisto", imagen:"liisto.png", imagenSeccion:"liistoseccion.png", video:"liisto.mp4", giro:"Software punto de venta", contacto:"Karla Real", tel:"33 1517 5065", negocio:"", ig:"https://www.instagram.com/liisto_digital", whats:"https://wa.me/523315175065?text=Hola%20el%20proveedor%20Liisto%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:51, nombre:"Publicidad 23", imagen:"publicidad23.png", imagenSeccion:"publicidad23seccion.png", video:"publicidad23.mp4", giro:"Impresión", contacto:"Daniel Ibarra", tel:"618 223 7714", negocio:"8715037389", ig:"https://www.instagram.com/23.publicidad/", whats:"https://wa.me/526182237714?text=Hola%20el%20proveedor%20Publicidad%2023%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:52, nombre:"Alba", imagen:"alba.png", imagenSeccion:"albaseccion.png", video:"alba.mp4", giro:"Comercializadora", contacto:"Gustavo Morales / Arturo Romero", tel:"871 156 4072", negocio:"871 723 0077", ig:"https://www.instagram.com/alba.comercializadora/", whats:"https://wa.me/528711564072?text=Hola%20el%20proveedor%20Alba%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:53, nombre:"Sistemas contra incendios de la Laguna", imagen:"scil.png", imagenSeccion:"scilseccion.png", video:"scil.mp4", giro:"Seguridad y Extintores", contacto:"Miguel Izaguirre", tel:"871 786 3681", negocio:"871 721 1684", ig:"https://www.instagram.com/sistemas_scil/", whats:"https://wa.me/528717863681?text=Hola%20el%20proveedor%20Sistemas%20contra%20incendios%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:54, nombre:"Diseña Tu Imagen", imagen:"disenatuimagen.png", imagenSeccion:"disenatuimagenseccion.png", video:"disenatuimagen.mp4", giro:"Uniformes", contacto:"Emelia Govela / Fatima Dipp", tel:"871 799 9593", negocio:"8711437813", ig:"https://www.instagram.com/disena_tu_imagen/", whats:"https://wa.me/528717999593?text=Hola%20el%20proveedor%20Diseña%20Tu%20Imagen%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:55, nombre:"Easy Tap", imagen:"easytap.png", imagenSeccion:"easytapseccion.png", video:"easytap.mp4", giro:"Creación de sitios web", contacto:"Israel Torres", tel:"8719676251", negocio:"8719676251", ig:"https://www.instagram.com/easytaptrc/", whats:"https://wa.me/528719676251?text=Hola%20el%20proveedor%20Easy%20Tap%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:56, nombre:"Cafelaria", imagen:"cafelaria.png", imagenSeccion:"cafelariaseccion.png", video:"cafelaria.mp4", giro:"Insumos para cafeterías", contacto:"Luis Lopez", tel:"8711091985", negocio:"8711091985", ig:"https://www.instagram.com/cafelaria.insumos/", whats:"https://wa.me/528711091985?text=Hola%20el%20proveedor%20Cafelaria%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"},
+      {id:57, nombre:"Purifika", imagen:"purifika.png", imagenSeccion:"purifikaseccion.png", video:"purifika.mp4", giro:"Soluciones en agua purificada", contacto:"Carlos Cordova", tel:"8717931742", negocio:"8717931742", ig:"", whats:"https://wa.me/528717931742?text=Hola%20el%20proveedor%20Purifika%20te%20vi%20en%20canirac%20necesito%20mas%20informacion%20porfavor"}
+    ];
+
+    const grid = document.getElementById('proveedores-grid');
+    const searchInput = document.getElementById('searchInput');
+
+    function renderProveedores(filtered) {
+      grid.innerHTML = '';
+      if (filtered.length === 0) {
+        grid.innerHTML = `<p style="color:white; text-align:center; grid-column:1/-1; padding:50px;">No se encontraron proveedores.</p>`;
+        return;
+      }
+      filtered.forEach(p => {
+        const cardHTML = `
+          <div class="card" onclick="openModal(${p.id})">
+            <img src="${p.imagen}" alt="${p.nombre}">
+            <div class="overlay">
+              <h3>${p.nombre}</h3>
+              <p class="giro">${p.giro}</p>
+            </div>
+          </div>
+        `;
+        grid.innerHTML += cardHTML;
+      });
+    }
+
+    searchInput.addEventListener('input', () => {
+      const term = searchInput.value.toLowerCase().trim();
+      if (term === '') {
+        renderProveedores(proveedores);
+        return;
+      }
+      const filtered = proveedores.filter(p => {
+        const texto = (p.nombre + " " + p.giro + " " + (p.contacto || "") + " " + (p.keywords || "")).toLowerCase();
+        return texto.includes(term);
+      });
+      renderProveedores(filtered);
+    });
+
+    renderProveedores(proveedores);
+
+    function openModal(id) {
+      const p = proveedores.find(prov => prov.id === id);
+      if (!p) return;
+
+      document.getElementById('modal-title').textContent = p.nombre;
+      document.getElementById('modal-nombre').textContent = p.nombre;
+      document.getElementById('modal-giro').textContent = p.giro;
+      document.getElementById('modal-contacto').textContent = p.contacto;
+      document.getElementById('modal-tel').textContent = p.tel;
+      document.getElementById('modal-negocio').textContent = p.negocio || "—";
+
+      document.getElementById('modal-seccion-img').src = p.imagenSeccion;
+
+      const video = document.getElementById('modal-video');
+      video.innerHTML = `<source src="${p.video}" type="video/mp4">`;
+      video.load();
+
+      document.getElementById('modal-ig-link').href = p.ig;
+      document.getElementById('modal-whats-link').href = p.whats;
+
+      document.getElementById('modal').style.display = "flex";
+    }
+
+    function closeModal() {
+      document.getElementById('modal').style.display = "none";
+      document.getElementById('modal-video').pause();
+    }
+
+    function zoomImage(img) {
+      document.getElementById('zoomed-image').src = img.src;
+      document.getElementById('image-zoom').style.display = "flex";
+    }
+
+    function closeZoom() {
+      document.getElementById('image-zoom').style.display = "none";
+    }
+  </script>
+</body>
+</html>

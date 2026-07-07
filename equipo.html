@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forma parte del equipo — CANIRAC Laguna</title>
+<meta name="description" content="Únete a CANIRAC Laguna. Déjanos tus datos y te contactamos.">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="form-page">
+  <div class="card-panel">
+    <div id="brand"></div>
+    <h1>Forma parte del equipo</h1>
+    <p class="sub">Déjanos tus datos y un asesor de CANIRAC Laguna te contactará para darte toda la información.</p>
+
+    <div class="form-msg" id="msg"></div>
+
+    <form id="form">
+      <div class="field">
+        <label for="nombre">Nombre completo *</label>
+        <input id="nombre" name="nombre" type="text" required placeholder="Tu nombre" autocomplete="name">
+      </div>
+      <div class="field">
+        <label for="telefono">Número de teléfono / WhatsApp *</label>
+        <input id="telefono" name="telefono" type="tel" required placeholder="Ej: 871 123 4567" autocomplete="tel">
+      </div>
+      <div class="field">
+        <label for="giro">Giro de tu negocio *</label>
+        <input id="giro" name="giro" type="text" required placeholder="Ej: Restaurante, cafetería, proveedor…" list="giros">
+        <datalist id="giros">
+          <option value="Restaurante"></option>
+          <option value="Cafetería"></option>
+          <option value="Bar / Cantina"></option>
+          <option value="Fonda / Cocina económica"></option>
+          <option value="Food truck"></option>
+          <option value="Proveedor de insumos"></option>
+          <option value="Servicios para restaurantes"></option>
+        </datalist>
+      </div>
+      <div class="field">
+        <label for="mensaje">Mensaje (opcional)</label>
+        <textarea id="mensaje" name="mensaje" placeholder="Cuéntanos brevemente sobre tu negocio o tu interés"></textarea>
+      </div>
+      <button class="btn btn-primary btn-lg" id="submitBtn" type="submit" style="width:100%">Enviar solicitud</button>
+    </form>
+
+    <div id="success" class="success-check hidden">
+      <div class="circle">✓</div>
+      <h1 style="font-size:1.5rem">¡Solicitud enviada!</h1>
+      <p class="sub" style="margin-bottom:1.4rem">Gracias por tu interés en CANIRAC Laguna. Pronto nos pondremos en contacto contigo.</p>
+      <a class="btn btn-ghost" href="index.html">Volver al inicio</a>
+    </div>
+
+    <p class="center mt"><a class="back-link" href="index.html">‹ Volver al inicio</a></p>
+  </div>
+</div>
+
+<script type="module">
+import { brandHTML } from "./js/ui.js";
+import { addEquipo } from "./js/store.js";
+
+document.getElementById("brand").innerHTML = brandHTML({ size:"" });
+
+const form = document.getElementById("form");
+const msg = document.getElementById("msg");
+const btn = document.getElementById("submitBtn");
+
+form.addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  msg.className = "form-msg";
+  const data = {
+    nombre: form.nombre.value.trim(),
+    telefono: form.telefono.value.trim(),
+    giro: form.giro.value.trim(),
+    mensaje: form.mensaje.value.trim()
+  };
+  if (!data.nombre || !data.telefono || !data.giro){
+    msg.className = "form-msg err"; msg.textContent = "Por favor completa los campos obligatorios (*).";
+    return;
+  }
+  btn.disabled = true; btn.textContent = "Enviando…";
+  try {
+    await addEquipo(data);
+    form.classList.add("hidden");
+    document.getElementById("success").classList.remove("hidden");
+  } catch(err){
+    console.error(err);
+    msg.className = "form-msg err";
+    msg.textContent = "No se pudo enviar en este momento. Revisa tu conexión e inténtalo de nuevo.";
+    btn.disabled = false; btn.textContent = "Enviar solicitud";
+  }
+});
+</script>
+</body>
+</html>

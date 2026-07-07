@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proveedores — CANIRAC Laguna</title>
+<meta name="description" content="Directorio oficial de proveedores CANIRAC Laguna. Busca por nombre, giro o servicio.">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- Barra superior -->
+<div class="topbar">
+  <div class="row">
+    <a class="back-link" href="index.html">‹ Volver al inicio</a>
+    <a href="index.html" id="tbBrand"></a>
+  </div>
+</div>
+
+<!-- Encabezado + buscador -->
+<section class="prov-hero">
+  <div class="inner">
+    <span class="eyebrow" style="color:#ffd8b0">Directorio oficial</span>
+    <h1>Proveedores</h1>
+    <div class="searchbar">
+      <span class="ic" id="searchIc"></span>
+      <input id="search" type="search" autocomplete="off"
+        placeholder="Buscar proveedor… (ej: lentes, hielo, carne, limpieza)">
+    </div>
+    <div class="search-count" id="count"></div>
+  </div>
+</section>
+
+<!-- Grid de proveedores -->
+<main class="prov-grid" id="grid">
+  <div class="spinner"></div>
+</main>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <button class="modal-close" id="modalClose" aria-label="Cerrar">×</button>
+      <div class="m-giro" id="mGiro"></div>
+      <h3 id="mName"></h3>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div id="footBrand"></div>
+  <small>© <span id="year"></span> CANIRAC Laguna</small>
+</footer>
+
+<script type="module">
+import { brandHTML, ICONS, waLink, escapeHtml } from "./js/ui.js";
+import { MENSAJE_PROVEEDOR } from "./js/config.js";
+import { getProviders } from "./js/store.js";
+
+document.getElementById("tbBrand").innerHTML = brandHTML({ size:"", subtitle:false });
+document.getElementById("footBrand").innerHTML = brandHTML({ onDark:true });
+document.getElementById("searchIc").innerHTML = ICONS.search;
+document.getElementById("year").textContent = new Date().getFullYear();
+
+let PROV = [];
+const grid = document.getElementById("grid");
+const countEl = document.getElementById("count");
+
+function norm(s){ return (s||"").toString().toLowerCase()
+  .normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
+
+(async () => {
+  try {
+    PROV = await getProviders();
+  } catch(e){ PROV = []; }
+  PROV.sort((a,b)=> (a.nombre||"").localeCompare(b.nombre||"","es"));
+  render(PROV);
+})();
+
+function render(list){
+  if (!list.length){
+    grid.innerHTML = `<div class="empty-state">No se encontraron proveedores con esa búsqueda.</div>`;
+    countEl.textContent = "";
+    return;
+  }
+  grid.innerHTML = list.map((p,i)=>`
+    <article class="prov-card" data-id="${p.id}" tabindex="0" role="button" aria-label="Ver ${escapeHtml(p.nombre)}">
+      <div class="num">${String(p.id).padStart(2,"0")}</div>
+      <div class="pc-name">${escapeHtml(p.nombre)}</div>
+      <div class="pc-giro">${escapeHtml(p.giro || "")}</div>
+      <div class="pc-foot">
+        ${p.giro ? `<span class="chip">${escapeHtml((p.giro||"").split(",")[0].split("(")[0].trim().slice(0,22))}</span>` : "<span></span>"}
+        <span class="pc-open">Ver detalles ›</span>
+      </div>
+    </article>`).join("");
+  countEl.textContent = `${list.length} proveedor${list.length!==1?"es":""}`;
+  grid.querySelectorAll(".prov-card").forEach(c=>{
+    const id = c.dataset.id;
+    c.addEventListener("click", ()=>openModal(id));
+    c.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();openModal(id);} });
+  });
+}
+
+// Buscador (nombre, giro, contacto)
+const search = document.getElementById("search");
+search.addEventListener("input", ()=>{
+  const q = norm(search.value.trim());
+  if(!q){ render(PROV); return; }
+  const terms = q.split(/\s+/);
+  const filtered = PROV.filter(p=>{
+    const hay = norm([p.nombre,p.giro,p.contacto,p.descripcion].join(" "));
+    return terms.every(t=>hay.includes(t));
+  });
+  render(filtered);
+});
+
+// ---------- Modal ----------
+const overlay = document.getElementById("modalOverlay");
+const body = document.getElementById("modalBody");
+function openModal(id){
+  const p = PROV.find(x=>String(x.id)===String(id));
+  if(!p) return;
+  document.getElementById("mGiro").textContent = p.giro || "Proveedor";
+  document.getElementById("mName").textContent = p.nombre;
+
+  const rows = [];
+  if (p.contacto) rows.push(row("Contacto", escapeHtml(p.contacto)));
+  const tel = p.telContacto || p.telNegocio;
+  if (tel) rows.push(row("Teléfono", escapeHtml(tel)));
+  if (p.giro) rows.push(row("Giro", escapeHtml(p.giro)));
+
+  const photos = (p.fotos||[]).filter(Boolean);
+  const photosHtml = photos.length
+    ? `<div class="m-photos">${photos.map(f=>`<img src="${escapeHtml(f)}" alt="${escapeHtml(p.nombre)}" loading="lazy">`).join("")}</div>` : "";
+
+  const desc = p.descripcion ? `<p class="m-desc">${escapeHtml(p.descripcion)}</p>` : "";
+
+  const socials = [];
+  if (p.instagram) socials.push(`<a class="link-social" target="_blank" rel="noopener" href="${escapeHtml(p.instagram)}">${ICONS.ig} Instagram</a>`);
+  if (p.facebook)  socials.push(`<a class="link-social" target="_blank" rel="noopener" href="${escapeHtml(p.facebook)}">${ICONS.fb} Facebook</a>`);
+  if (p.web)       socials.push(`<a class="link-social" target="_blank" rel="noopener" href="${escapeHtml(p.web)}">${ICONS.web} Sitio web</a>`);
+  const socialsHtml = socials.length ? `<div class="m-row"><div class="k">Redes</div><div class="v" style="display:flex;flex-direction:column;gap:.5rem">${socials.join("")}</div></div>` : "";
+
+  const waNum = (p.whatsapp || tel || "").replace(/[^\d]/g,"");
+  const waBtn = waNum
+    ? `<a class="btn btn-primary" style="background:#25D366;box-shadow:0 12px 26px rgba(37,211,102,.35)" target="_blank" rel="noopener" href="${waLink(waNum, MENSAJE_PROVEEDOR)}">${ICONS.wa} WhatsApp</a>`
+    : "";
+
+  body.innerHTML = `
+    ${photosHtml}
+    ${desc}
+    ${rows.join("")}
+    ${socialsHtml}
+    <div class="m-actions">${waBtn}</div>
+  `;
+  overlay.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function row(k,v){ return `<div class="m-row"><div class="k">${k}</div><div class="v">${v}</div></div>`; }
+function closeModal(){ overlay.classList.remove("open"); document.body.style.overflow=""; }
+document.getElementById("modalClose").addEventListener("click", closeModal);
+overlay.addEventListener("click", e=>{ if(e.target===overlay) closeModal(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeModal(); });
+</script>
+</body>
+</html>

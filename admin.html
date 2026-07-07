@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de administración — CANIRAC Laguna</title>
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div class="form-page" id="loginView">
+  <div class="card-panel" style="max-width:440px">
+    <div id="loginBrand"></div>
+    <h1>Panel de administración</h1>
+    <p class="sub">Acceso exclusivo del equipo CANIRAC Laguna.</p>
+    <div class="form-msg" id="loginMsg"></div>
+    <form id="loginForm">
+      <div class="field">
+        <label for="user">Usuario</label>
+        <input id="user" type="text" value="" placeholder="canirac" autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="pass">Contraseña</label>
+        <input id="pass" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary btn-lg" id="loginBtn" type="submit" style="width:100%">Entrar</button>
+    </form>
+    <p class="center mt"><a class="back-link" href="index.html">‹ Volver al sitio</a></p>
+  </div>
+</div>
+
+<!-- ============ PANEL ============ -->
+<div class="admin-shell hidden" id="adminView">
+  <div class="admin-top">
+    <div class="row">
+      <div id="adminBrand"></div>
+      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+        <span class="mode-pill" id="modePill"></span>
+        <a class="btn btn-sm btn-outline" href="index.html" target="_blank" style="color:#fff;border-color:rgba(255,255,255,.4)">Ver sitio ↗</a>
+        <button class="btn btn-sm btn-orange" id="logoutBtn">Cerrar sesión</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-wrap">
+    <div class="tabs">
+      <button class="tab active" data-tab="prov">Proveedores</button>
+      <button class="tab" data-tab="inicio">Inicio (carrusel y video)</button>
+      <button class="tab" data-tab="equipo">Equipo <span class="badge hidden" id="equipoBadge">0</span></button>
+    </div>
+
+    <!-- ---- PANEL PROVEEDORES ---- -->
+    <section class="panel active" id="panel-prov">
+      <div class="help-box">Haz clic en <b>editar</b> para cambiar los datos, agregar fotos o una descripción de cada proveedor. Los cambios se guardan y se publican automáticamente para todos los visitantes.</div>
+      <div class="toolbar">
+        <div class="grow"><input class="search" id="provSearch" placeholder="Buscar por nombre o giro…"></div>
+        <button class="btn btn-primary btn-sm" id="addProvBtn">+ Agregar proveedor</button>
+        <button class="btn btn-ghost btn-sm" id="seedBtn" title="Cargar los 62 proveedores del Excel">Cargar lista inicial (62)</button>
+      </div>
+      <div id="provCount" class="muted" style="margin-bottom:.7rem;font-size:.9rem"></div>
+      <div style="overflow-x:auto">
+        <table class="admin-table" id="provTable">
+          <thead><tr><th style="width:52px">#</th><th>Nombre</th><th>Giro</th><th>Fotos</th><th style="width:110px"></th></tr></thead>
+          <tbody id="provBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---- PANEL INICIO ---- -->
+    <section class="panel" id="panel-inicio">
+      <div class="section-block">
+        <h3>Carrusel de fotos</h3>
+        <div class="help-box">Agrega imágenes por <b>enlace (URL)</b> o <b>subiendo un archivo</b> desde tu dispositivo. Puedes ponerle un título a cada foto. Se recomienda usar imágenes horizontales (16:9).</div>
+        <div class="row-2">
+          <div class="field">
+            <label>Agregar por URL de imagen</label>
+            <input id="carUrl" placeholder="https://…/foto.jpg">
+          </div>
+          <div class="field">
+            <label>Título (opcional)</label>
+            <input id="carCap" placeholder="Ej: Evento anual 2025">
+          </div>
+        </div>
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:1.2rem">
+          <button class="btn btn-primary btn-sm" id="carAddUrl">Agregar por URL</button>
+          <label class="btn btn-ghost btn-sm" style="margin:0">Subir imagen…
+            <input type="file" id="carFile" accept="image/*" hidden>
+          </label>
+        </div>
+        <div class="card-grid" id="carGrid"></div>
+      </div>
+
+      <div class="section-block">
+        <h3>Video</h3>
+        <div class="help-box">Pega un enlace de <b>YouTube</b>, <b>Vimeo</b> o un enlace directo a un archivo <b>.mp4</b>.</div>
+        <div class="field">
+          <label>Título del video</label>
+          <input id="vidTitle" placeholder="Conoce CANIRAC Laguna">
+        </div>
+        <div class="field">
+          <label>Enlace del video</label>
+          <input id="vidUrl" placeholder="https://www.youtube.com/watch?v=…">
+        </div>
+        <button class="btn btn-primary btn-sm" id="saveVideoBtn">Guardar video</button>
+      </div>
+    </section>
+
+    <!-- ---- PANEL EQUIPO ---- -->
+    <section class="panel" id="panel-equipo">
+      <div class="help-box">Aquí llegan las solicitudes de <b>“Forma parte del equipo”</b> enviadas desde el sitio.</div>
+      <div class="toolbar">
+        <div class="grow muted" id="equipoCount" style="font-size:.95rem"></div>
+        <button class="btn btn-ghost btn-sm" id="exportEquipo">Exportar CSV</button>
+        <button class="btn btn-ghost btn-sm" id="refreshEquipo">Actualizar</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="admin-table" id="equipoTable">
+          <thead><tr><th>Fecha</th><th>Nombre</th><th>Teléfono</th><th>Giro</th><th>Mensaje</th><th style="width:50px"></th></tr></thead>
+          <tbody id="equipoBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ============ DRAWER EDITOR PROVEEDOR ============ -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <h3 id="drawerTitle">Editar proveedor</h3>
+    <button class="modal-close" id="drawerClose" style="position:static">×</button>
+  </div>
+  <div class="drawer-body">
+    <input type="hidden" id="pf-id">
+    <div class="field"><label>Nombre de la empresa *</label><input id="pf-nombre"></div>
+    <div class="field"><label>Giro / servicio</label><input id="pf-giro"></div>
+    <div class="field"><label>Descripción (aparece en la ventana del proveedor)</label><textarea id="pf-descripcion"></textarea></div>
+    <div class="row-2">
+      <div class="field"><label>Nombre de contacto</label><input id="pf-contacto"></div>
+      <div class="field"><label>WhatsApp (solo números, con 52)</label><input id="pf-whatsapp" placeholder="528711234567"></div>
+    </div>
+    <div class="row-2">
+      <div class="field"><label>Teléfono de contacto</label><input id="pf-telContacto"></div>
+      <div class="field"><label>Teléfono del negocio</label><input id="pf-telNegocio"></div>
+    </div>
+    <div class="field"><label>Instagram (URL)</label><input id="pf-instagram" placeholder="https://instagram.com/…"></div>
+    <div class="field"><label>Facebook (URL)</label><input id="pf-facebook" placeholder="https://facebook.com/…"></div>
+    <div class="field"><label>Sitio web (URL)</label><input id="pf-web" placeholder="https://…"></div>
+
+    <div class="section-block" style="box-shadow:none;background:var(--paper-2);padding:1rem">
+      <label style="font-family:var(--f-cond);text-transform:uppercase;letter-spacing:.12em;font-size:.8rem;font-weight:600">Fotos del proveedor</label>
+      <div class="card-grid" id="pfPhotos" style="margin:.8rem 0"></div>
+      <div class="row-2">
+        <div class="field" style="margin:0"><input id="pfPhotoUrl" placeholder="URL de la foto"></div>
+        <div style="display:flex;gap:.5rem;align-items:flex-start">
+          <button class="btn btn-ghost btn-sm" id="pfAddUrl" type="button">Agregar URL</button>
+          <label class="btn btn-ghost btn-sm" style="margin:0">Subir…<input type="file" id="pfFile" accept="image/*" hidden></label>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:.7rem;margin-top:1.4rem">
+      <button class="btn btn-primary" id="pfSave" style="flex:1">Guardar</button>
+      <button class="btn btn-ghost" id="pfCancel">Cancelar</button>
+    </div>
+  </div>
+</aside>
+
+<script type="module">
+import { brandHTML, ICONS, escapeHtml, toast } from "./js/ui.js";
+import { ADMIN } from "./js/config.js";
+import * as store from "./js/store.js";
+
+document.getElementById("loginBrand").innerHTML = brandHTML({ size:"" });
+document.getElementById("adminBrand").innerHTML = brandHTML({ onDark:true, subtitle:false });
+document.getElementById("user").value = ADMIN.usuario;
+
+let PROV = [], SITE = null, EQUIPO = [];
+
+// ---------- Init ----------
+(async () => {
+  await store.init();
+  const pill = document.getElementById("modePill");
+  if (store.getMode()==="cloud"){ pill.textContent="● Nube (Firebase)"; pill.className="mode-pill cloud"; }
+  else { pill.textContent="● Local (este equipo)"; pill.className="mode-pill local"; }
+  store.onAdminChange(v => { if(v) showAdmin(); });
+  if (store.isAdmin()) showAdmin();
+})();
+
+// ---------- Login ----------
+const loginForm = document.getElementById("loginForm");
+loginForm.addEventListener("submit", async e=>{
+  e.preventDefault();
+  const msg = document.getElementById("loginMsg");
+  msg.className="form-msg";
+  const btn = document.getElementById("loginBtn");
+  btn.disabled=true; btn.textContent="Entrando…";
+  try{
+    await store.adminLogin(document.getElementById("user").value, document.getElementById("pass").value);
+    showAdmin();
+  }catch(err){
+    msg.className="form-msg err";
+    msg.textContent = friendlyErr(err);
+  }finally{
+    btn.disabled=false; btn.textContent="Entrar";
+  }
+});
+function friendlyErr(err){
+  const c = (err && err.code) || "";
+  if (c.includes("wrong-password")||c.includes("invalid-credential")||c.includes("user-not-found"))
+    return "Usuario o contraseña incorrectos. (Si es la primera vez en la nube, revisa el paso 3 del README para crear el usuario admin en Firebase.)";
+  if (c.includes("network")) return "Sin conexión. Revisa tu internet.";
+  return (err && err.message) || "No se pudo iniciar sesión.";
+}
+document.getElementById("logoutBtn").addEventListener("click", async ()=>{
+  await store.adminLogout();
+  location.reload();
+});
+
+async function showAdmin(){
+  document.getElementById("loginView").classList.add("hidden");
+  document.getElementById("adminView").classList.remove("hidden");
+  await Promise.all([loadProviders(), loadSite(), loadEquipo()]);
+}
+
+// ---------- Tabs ----------
+document.querySelectorAll(".tab").forEach(t=>{
+  t.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById("panel-"+t.dataset.tab).classList.add("active");
+  });
+});
+
+// ============================================================
+//  PROVEEDORES
+// ============================================================
+async function loadProviders(){
+  PROV = await store.getProviders();
+  PROV = PROV.map(p=>Object.assign({fotos:[],descripcion:"",whatsapp:"",instagram:"",facebook:"",web:"",contacto:"",telContacto:"",telNegocio:"",giro:""}, p));
+  renderProv();
+}
+const provSearch = document.getElementById("provSearch");
+provSearch.addEventListener("input", renderProv);
+function renderProv(){
+  const q = provSearch.value.trim().toLowerCase();
+  const list = PROV.filter(p=> !q || (p.nombre+" "+p.giro).toLowerCase().includes(q))
+                   .sort((a,b)=>(a.id||0)-(b.id||0));
+  const body = document.getElementById("provBody");
+  body.innerHTML = list.map(p=>`
+    <tr>
+      <td>${String(p.id).padStart(2,"0")}</td>
+      <td><strong>${escapeHtml(p.nombre)}</strong></td>
+      <td class="muted">${escapeHtml((p.giro||"").slice(0,60))}</td>
+      <td>${(p.fotos||[]).filter(Boolean).length || "—"}</td>
+      <td><div class="actions">
+        <button class="icon-btn" data-edit="${p.id}" title="Editar">${ICONS.edit}</button>
+        <button class="icon-btn del" data-del="${p.id}" title="Eliminar">${ICONS.trash}</button>
+      </div></td>
+    </tr>`).join("");
+  document.getElementById("provCount").textContent = `${PROV.length} proveedores en total`;
+  body.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openDrawer(b.dataset.edit));
+  body.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>delProvider(b.dataset.del));
+}
+
+async function delProvider(id){
+  const p = PROV.find(x=>String(x.id)===String(id));
+  if(!p) return;
+  if(!confirm(`¿Eliminar a "${p.nombre}"? Esta acción no se puede deshacer.`)) return;
+  PROV = PROV.filter(x=>String(x.id)!==String(id));
+  await persistProviders("Proveedor eliminado");
+  renderProv();
+}
+document.getElementById("addProvBtn").addEventListener("click", ()=>{
+  const nextId = PROV.reduce((m,p)=>Math.max(m,p.id||0),0)+1;
+  openDrawer(null, nextId);
+});
+document.getElementById("seedBtn").addEventListener("click", async ()=>{
+  if(!confirm("Esto cargará/actualizará los 62 proveedores del Excel original. ¿Continuar?")) return;
+  try{
+    await store.publishSeed();
+    await loadProviders();
+    toast("Lista inicial cargada");
+  }catch(e){ toast("Error al cargar", "err"); console.error(e); }
+});
+
+async function persistProviders(msg){
+  try{ await store.saveProviders(PROV); toast(msg||"Cambios guardados"); }
+  catch(e){ toast("Error al guardar. ¿Iniciaste sesión en la nube?", "err"); console.error(e); }
+}
+
+// ---------- Drawer editor ----------
+const drawer = document.getElementById("drawer");
+const drawerOverlay = document.getElementById("drawerOverlay");
+let editingPhotos = [];
+function openDrawer(id, newId){
+  const p = id!=null ? PROV.find(x=>String(x.id)===String(id)) : {id:newId, fotos:[]};
+  document.getElementById("drawerTitle").textContent = id!=null ? "Editar proveedor" : "Nuevo proveedor";
+  document.getElementById("pf-id").value = p.id;
+  for (const k of ["nombre","giro","descripcion","contacto","whatsapp","telContacto","telNegocio","instagram","facebook","web"]){
+    document.getElementById("pf-"+k).value = p[k]||"";
+  }
+  editingPhotos = (p.fotos||[]).slice();
+  renderPhotos();
+  drawer.classList.add("open"); drawerOverlay.classList.add("open");
+}
+function closeDrawer(){ drawer.classList.remove("open"); drawerOverlay.classList.remove("open"); }
+document.getElementById("drawerClose").onclick = closeDrawer;
+document.getElementById("pfCancel").onclick = closeDrawer;
+drawerOverlay.onclick = closeDrawer;
+
+function renderPhotos(){
+  const grid = document.getElementById("pfPhotos");
+  if(!editingPhotos.length){ grid.innerHTML = `<span class="muted" style="font-size:.9rem">Sin fotos aún.</span>`; return; }
+  grid.innerHTML = editingPhotos.map((f,i)=>`
+    <div class="media-card">
+      <img src="${escapeHtml(f)}" alt="">
+      <div class="mc-body"><span>Foto ${i+1}</span><button class="icon-btn del" data-rm="${i}">${ICONS.trash}</button></div>
+    </div>`).join("");
+  grid.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ editingPhotos.splice(+b.dataset.rm,1); renderPhotos(); });
+}
+document.getElementById("pfAddUrl").onclick = ()=>{
+  const u = document.getElementById("pfPhotoUrl").value.trim();
+  if(u){ editingPhotos.push(u); document.getElementById("pfPhotoUrl").value=""; renderPhotos(); }
+};
+document.getElementById("pfFile").onchange = async e=>{
+  const file = e.target.files[0]; if(!file) return;
+  try{ editingPhotos.push(await compressImage(file)); renderPhotos(); }
+  catch(err){ toast("No se pudo procesar la imagen","err"); }
+  e.target.value="";
+};
+document.getElementById("pfSave").onclick = async ()=>{
+  const id = +document.getElementById("pf-id").value;
+  const nombre = document.getElementById("pf-nombre").value.trim();
+  if(!nombre){ toast("El nombre es obligatorio","err"); return; }
+  const obj = { id, nombre, fotos: editingPhotos };
+  for (const k of ["giro","descripcion","contacto","whatsapp","telContacto","telNegocio","instagram","facebook","web"]){
+    obj[k] = document.getElementById("pf-"+k).value.trim();
+  }
+  const idx = PROV.findIndex(x=>x.id===id);
+  if(idx>=0) PROV[idx] = Object.assign(PROV[idx], obj);
+  else PROV.push(obj);
+  await persistProviders("Proveedor guardado");
+  renderProv();
+  closeDrawer();
+};
+
+// ============================================================
+//  INICIO (carrusel + video)
+// ============================================================
+async function loadSite(){
+  SITE = await store.getSite();
+  SITE.carousel = SITE.carousel || [];
+  SITE.video = SITE.video || {url:"",titulo:""};
+  document.getElementById("vidTitle").value = SITE.video.titulo||"";
+  document.getElementById("vidUrl").value = SITE.video.url||"";
+  renderCarGrid();
+}
+function renderCarGrid(){
+  const grid = document.getElementById("carGrid");
+  if(!SITE.carousel.length){ grid.innerHTML = `<span class="muted">Sin fotos en el carrusel.</span>`; return; }
+  grid.innerHTML = SITE.carousel.map((s,i)=>`
+    <div class="media-card">
+      <img src="${escapeHtml(s.url)}" alt="">
+      <div class="mc-body"><span>${escapeHtml(s.titulo||("Foto "+(i+1)))}</span>
+        <span style="display:flex;gap:.3rem">
+          <button class="icon-btn" data-up="${i}" title="Subir">↑</button>
+          <button class="icon-btn del" data-rmc="${i}">${ICONS.trash}</button>
+        </span>
+      </div>
+    </div>`).join("");
+  grid.querySelectorAll("[data-rmc]").forEach(b=>b.onclick=async()=>{ SITE.carousel.splice(+b.dataset.rmc,1); await persistSite("Foto eliminada"); renderCarGrid(); });
+  grid.querySelectorAll("[data-up]").forEach(b=>b.onclick=async()=>{ const i=+b.dataset.up; if(i>0){ [SITE.carousel[i-1],SITE.carousel[i]]=[SITE.carousel[i],SITE.carousel[i-1]]; await persistSite("Orden actualizado"); renderCarGrid(); }});
+}
+document.getElementById("carAddUrl").onclick = async ()=>{
+  const url = document.getElementById("carUrl").value.trim();
+  if(!url){ toast("Escribe una URL de imagen","err"); return; }
+  SITE.carousel.push({url, titulo: document.getElementById("carCap").value.trim()});
+  document.getElementById("carUrl").value=""; document.getElementById("carCap").value="";
+  await persistSite("Foto agregada"); renderCarGrid();
+};
+document.getElementById("carFile").onchange = async e=>{
+  const file = e.target.files[0]; if(!file) return;
+  try{
+    const dataUrl = await compressImage(file);
+    SITE.carousel.push({url:dataUrl, titulo: document.getElementById("carCap").value.trim()});
+    document.getElementById("carCap").value="";
+    await persistSite("Foto subida"); renderCarGrid();
+  }catch(err){ toast("No se pudo procesar la imagen","err"); }
+  e.target.value="";
+};
+document.getElementById("saveVideoBtn").onclick = async ()=>{
+  SITE.video = { titulo: document.getElementById("vidTitle").value.trim(), url: document.getElementById("vidUrl").value.trim() };
+  await persistSite("Video guardado");
+};
+async function persistSite(msg){
+  try{ await store.saveSite(SITE); toast(msg||"Guardado"); }
+  catch(e){ toast("Error al guardar. ¿Iniciaste sesión en la nube?","err"); console.error(e); }
+}
+
+// ============================================================
+//  EQUIPO
+// ============================================================
+async function loadEquipo(){
+  try{ EQUIPO = await store.getEquipo(); }catch(e){ EQUIPO=[]; console.error(e); }
+  const badge = document.getElementById("equipoBadge");
+  if(EQUIPO.length){ badge.textContent = EQUIPO.length; badge.classList.remove("hidden"); }
+  else badge.classList.add("hidden");
+  document.getElementById("equipoCount").textContent = `${EQUIPO.length} solicitud${EQUIPO.length!==1?"es":""}`;
+  const body = document.getElementById("equipoBody");
+  if(!EQUIPO.length){ body.innerHTML = `<tr><td colspan="6" class="muted center" style="padding:2rem">Aún no hay solicitudes.</td></tr>`; return; }
+  body.innerHTML = EQUIPO.map(r=>`
+    <tr>
+      <td class="muted" style="white-space:nowrap">${fmtDate(r.createdAt)}</td>
+      <td><strong>${escapeHtml(r.nombre)}</strong></td>
+      <td><a class="link-social" href="https://wa.me/${(r.telefono||'').replace(/[^\d]/g,'')}" target="_blank">${escapeHtml(r.telefono)}</a></td>
+      <td>${escapeHtml(r.giro)}</td>
+      <td class="muted">${escapeHtml(r.mensaje||"")}</td>
+      <td><button class="icon-btn del" data-rme="${r.id}">${ICONS.trash}</button></td>
+    </tr>`).join("");
+  body.querySelectorAll("[data-rme]").forEach(b=>b.onclick=async()=>{
+    if(!confirm("¿Eliminar esta solicitud?")) return;
+    try{ await store.deleteEquipo(b.dataset.rme); await loadEquipo(); toast("Solicitud eliminada"); }
+    catch(e){ toast("Error al eliminar","err"); }
+  });
+}
+document.getElementById("refreshEquipo").onclick = loadEquipo;
+document.getElementById("exportEquipo").onclick = ()=>{
+  if(!EQUIPO.length){ toast("No hay datos para exportar","err"); return; }
+  const rows = [["Fecha","Nombre","Telefono","Giro","Mensaje"]];
+  EQUIPO.forEach(r=>rows.push([fmtDate(r.createdAt), r.nombre, r.telefono, r.giro, (r.mensaje||"").replace(/\n/g," ")]));
+  const csv = rows.map(r=>r.map(c=>`"${String(c||"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "equipo_canirac.csv"; a.click();
+};
+function fmtDate(ts){
+  if(!ts) return "";
+  const d = new Date(ts);
+  return d.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})+" "+d.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"});
+}
+
+// ============================================================
+//  Utilidad: comprimir imagen a dataURL
+// ============================================================
+function compressImage(file, maxW=1000, quality=0.72){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const scale = Math.min(1, maxW/img.width);
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.width*scale);
+        c.height = Math.round(img.height*scale);
+        c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+        resolve(c.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+</script>
+</body>
+</html>

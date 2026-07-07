@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CANIRAC Laguna — Cámara Nacional de la Industria de Restaurantes</title>
+<meta name="description" content="CANIRAC Laguna — Cámara Nacional de la Industria de Restaurantes y Alimentos Condimentados. Directorio de proveedores y comunidad.">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ============ HERO / INICIO ============ -->
+<header class="hero">
+  <div class="hero-inner">
+    <div id="heroBrand"></div>
+    <p class="hero-lead" id="heroLead">Todo lo que sucede detrás de un plato.</p>
+
+    <div class="hero-actions">
+      <a class="btn btn-light btn-lg" href="proveedores.html">Proveedores</a>
+      <a class="btn btn-orange btn-lg" href="equipo.html">Forma parte del equipo</a>
+    </div>
+
+    <div class="hero-social-wrap">
+      <span>Síguenos</span>
+      <div class="socials">
+        <a class="social ig" id="igLink" href="#" target="_blank" rel="noopener" aria-label="Instagram"></a>
+        <a class="social wa" id="waLink" href="#" target="_blank" rel="noopener" aria-label="WhatsApp"></a>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-cue">Desliza para conocer más ▾</div>
+</header>
+
+<!-- ============ CARRUSEL ============ -->
+<section class="section" id="galeria">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Galería</span>
+      <h2 class="section-title">CANIRAC en imágenes</h2>
+      <p>Momentos, eventos y la comunidad restaurantera de La Laguna.</p>
+    </div>
+    <div class="carousel" id="carousel">
+      <div class="carousel-track" id="carTrack"></div>
+      <button class="car-btn prev" id="carPrev" aria-label="Anterior">‹</button>
+      <button class="car-btn next" id="carNext" aria-label="Siguiente">›</button>
+      <div class="car-dots" id="carDots"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VIDEO ============ -->
+<section class="section bg-soft" id="video">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Video</span>
+      <h2 class="section-title" id="videoTitle">Conoce CANIRAC Laguna</h2>
+      <p>Descubre quiénes somos y por qué unirte a la Cámara.</p>
+    </div>
+    <div class="video-frame" id="videoFrame">
+      <div class="video-empty">Aún no se ha agregado un video.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LLAMADA FINAL ============ -->
+<section class="section" id="cta">
+  <div class="wrap section-head">
+    <span class="eyebrow">Únete</span>
+    <h2 class="section-title">¿Listo para formar parte?</h2>
+    <p>Suma tu negocio a la comunidad CANIRAC Laguna y accede a nuestra red de proveedores confiables.</p>
+    <div class="hero-actions" style="margin-top:1.4rem">
+      <a class="btn btn-primary btn-lg" href="proveedores.html">Ver proveedores</a>
+      <a class="btn btn-ghost btn-lg" href="equipo.html">Forma parte del equipo</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-footer">
+  <div id="footBrand"></div>
+  <div class="socials" id="footSocials"></div>
+  <small>© <span id="year"></span> CANIRAC Laguna · Todos los derechos reservados</small>
+  <div style="margin-top:1rem"><a href="admin.html" class="muted" style="font-size:.8rem;letter-spacing:.1em">Panel de administración</a></div>
+</footer>
+
+<script type="module">
+import { brandHTML, ICONS, waLink, CAMARA_WA, videoEmbed } from "./js/ui.js";
+import { CONTACTO } from "./js/config.js";
+import { getSite } from "./js/store.js";
+
+// Logo + redes
+document.getElementById("heroBrand").innerHTML = brandHTML({ onDark:true, size:"xl", vertical:true });
+document.getElementById("footBrand").innerHTML = brandHTML({ onDark:true, size:"" });
+document.getElementById("igLink").innerHTML = ICONS.ig;
+document.getElementById("waLink").innerHTML = ICONS.wa;
+document.getElementById("igLink").href = CONTACTO.instagram;
+document.getElementById("waLink").href = CAMARA_WA;
+document.getElementById("year").textContent = new Date().getFullYear();
+document.getElementById("footSocials").innerHTML =
+  `<a class="social ig" target="_blank" rel="noopener" href="${CONTACTO.instagram}" aria-label="Instagram">${ICONS.ig}</a>
+   <a class="social wa" target="_blank" rel="noopener" href="${CAMARA_WA}" aria-label="WhatsApp">${ICONS.wa}</a>`;
+
+// Contenido editable (carrusel + video)
+(async () => {
+  const site = await getSite();
+  if (site.hero?.subtitulo) document.getElementById("heroLead").textContent = "Todo lo que sucede detrás de un plato.";
+  renderCarousel(site.carousel || []);
+  renderVideo(site.video || {});
+})();
+
+function renderVideo(video){
+  const frame = document.getElementById("videoFrame");
+  if (video.titulo) document.getElementById("videoTitle").textContent = video.titulo;
+  const emb = videoEmbed(video.url);
+  if (!emb){ frame.innerHTML = `<div class="video-empty">Aún no se ha agregado un video.</div>`; return; }
+  if (emb.type === "iframe")
+    frame.innerHTML = `<iframe src="${emb.src}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+  else
+    frame.innerHTML = `<video src="${emb.src}" controls playsinline></video>`;
+}
+
+let carIndex = 0, carTimer = null, slidesCount = 0;
+function renderCarousel(slides){
+  const track = document.getElementById("carTrack");
+  const dots = document.getElementById("carDots");
+  if (!slides.length){
+    document.getElementById("galeria").style.display = "none";
+    return;
+  }
+  slidesCount = slides.length;
+  track.innerHTML = slides.map(s => `
+    <div class="slide">
+      <img src="${s.url}" alt="${(s.titulo||'').replace(/"/g,'')}" loading="lazy">
+      ${s.titulo ? `<div class="cap">${s.titulo}</div>` : ""}
+    </div>`).join("");
+  dots.innerHTML = slides.map((_,i)=>`<button data-i="${i}" class="${i===0?'active':''}" aria-label="Ir a ${i+1}"></button>`).join("");
+  dots.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>go(+b.dataset.i)));
+  document.getElementById("carPrev").onclick = ()=>go(carIndex-1);
+  document.getElementById("carNext").onclick = ()=>go(carIndex+1);
+  if (slidesCount>1) startAuto();
+  else { document.getElementById("carPrev").style.display="none"; document.getElementById("carNext").style.display="none"; dots.style.display="none"; }
+}
+function go(i){
+  carIndex = (i+slidesCount)%slidesCount;
+  document.getElementById("carTrack").style.transform = `translateX(-${carIndex*100}%)`;
+  document.querySelectorAll("#carDots button").forEach((d,idx)=>d.classList.toggle("active", idx===carIndex));
+  startAuto();
+}
+function startAuto(){ clearInterval(carTimer); carTimer = setInterval(()=>go(carIndex+1), 5500); }
+</script>
+</body>
+</html>

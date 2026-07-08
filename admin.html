@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Administración — CANIRAC Laguna</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginView">
+  <div class="login-card">
+    <div id="loginBrand"></div>
+    <h1>Administración</h1>
+    <p class="sub">Acceso del equipo CANIRAC Laguna</p>
+    <div class="form-msg" id="loginMsg"></div>
+    <form id="loginForm">
+      <div class="field"><label>Usuario</label><input id="user" value="canirac" autocomplete="username"></div>
+      <div class="field"><label>Contraseña</label><input id="pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="btn-primary" id="loginBtn" type="submit">Entrar</button>
+    </form>
+    <p style="text-align:center;margin-top:1rem"><a href="index.html" style="color:var(--primary);font-weight:600;font-size:.9rem">‹ Volver al sitio</a></p>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div class="admin hidden" id="adminView">
+  <div class="admin-top">
+    <div class="row">
+      <div id="adminBrand"></div>
+      <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <span class="pill" id="modePill"></span>
+        <a class="btn-w ghost" href="index.html" target="_blank">Ver sitio ↗</a>
+        <button class="btn-w" id="logoutBtn">Salir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-body">
+    <div class="atabs">
+      <button class="atab active" data-tab="prov">Proveedores</button>
+      <button class="atab" data-tab="equipo">Equipo <span class="b hidden" id="eqBadge">0</span></button>
+      <button class="atab" data-tab="tema">Apariencia</button>
+    </div>
+
+    <!-- PROVEEDORES -->
+    <section class="apanel active" id="p-prov">
+      <div class="hint">Edita cualquier proveedor (datos, categoría, fotos, descripción) o marca los <b>destacados</b> que aparecen en el inicio. Los cambios se guardan y publican automáticamente.</div>
+      <div class="atoolbar">
+        <div class="grow"><input id="provSearch" placeholder="Buscar por nombre, categoría o giro…"></div>
+        <button class="btn-blue" id="addBtn">+ Agregar</button>
+        <button class="btn-soft" id="seedBtn">Cargar lista inicial (62)</button>
+      </div>
+      <div id="provCount" class="muted" style="margin:.2rem 0 .8rem;color:var(--muted);font-size:.9rem"></div>
+      <div style="overflow-x:auto">
+        <table class="a-table">
+          <thead><tr><th style="width:44px">#</th><th>Nombre</th><th>Categoría</th><th style="width:70px">Dest.</th><th style="width:90px"></th></tr></thead>
+          <tbody id="provBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- EQUIPO -->
+    <section class="apanel" id="p-equipo">
+      <div class="hint">Aquí llegan las solicitudes de <b>“Regístrate / Forma parte del equipo”</b> del sitio.</div>
+      <div class="atoolbar">
+        <div class="grow muted" id="eqCount" style="color:var(--muted);font-size:.92rem"></div>
+        <button class="btn-soft" id="exportBtn">Exportar CSV</button>
+        <button class="btn-soft" id="refreshBtn">Actualizar</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="a-table">
+          <thead><tr><th>Fecha</th><th>Nombre</th><th>Teléfono</th><th>Giro</th><th>Mensaje</th><th style="width:44px"></th></tr></thead>
+          <tbody id="eqBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- APARIENCIA -->
+    <section class="apanel" id="p-tema">
+      <div class="hint">Personaliza el <b>color principal</b> y el <b>logo</b> del sitio. Al guardar, recarga el sitio para ver los cambios.</div>
+      <div style="background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.4rem;max-width:540px">
+        <div class="field">
+          <label>Color principal</label>
+          <div style="display:flex;gap:.7rem;align-items:center">
+            <input type="color" id="th-color" style="width:56px;height:46px;padding:2px;border-radius:10px;border:1.5px solid var(--line);background:#fff">
+            <input id="th-color-hex" style="max-width:140px" placeholder="#1877E6">
+            <button class="btn-soft" id="th-reset" type="button">Restablecer</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Logo</label>
+          <div style="display:flex;gap:1rem;align-items:center;margin-bottom:.6rem">
+            <div id="th-logo-prev" style="width:72px;height:72px;border-radius:14px;background:var(--soft);display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--line)"></div>
+            <label class="btn-soft" style="margin:0">Subir logo…<input type="file" id="th-logo-file" accept="image/*" hidden></label>
+            <button class="btn-soft" id="th-logo-clear" type="button">Quitar</button>
+          </div>
+          <input id="th-logo-url" placeholder="…o pega la URL de una imagen del logo">
+        </div>
+        <button class="btn-primary" id="th-save" style="max-width:240px">Guardar apariencia</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- EDITOR PROVEEDOR -->
+<div class="editor-overlay" id="edOverlay"></div>
+<aside class="editor" id="editor">
+  <div class="editor-top">
+    <h3 id="edTitle">Editar proveedor</h3>
+    <button class="x" id="edClose" data-ic="close"></button>
+  </div>
+  <div class="editor-body">
+    <input type="hidden" id="f-id">
+    <div class="field"><label>Nombre de la empresa *</label><input id="f-nombre"></div>
+    <div class="row-2">
+      <div class="field"><label>Categoría</label><select id="f-categoria"></select></div>
+      <div class="field"><label>Giro / servicio</label><input id="f-giro"></div>
+    </div>
+    <div class="field"><label>Descripción (aparece en la ficha)</label><textarea id="f-descripcion"></textarea></div>
+    <label class="check"><input type="checkbox" id="f-destacado"> <span>Mostrar como <b>proveedor destacado</b> en el inicio</span></label>
+    <div class="field"><label>Etiqueta del destacado (ej: “Miembro CANIRAC”, “10% para socios”)</label><input id="f-badge" placeholder="Opcional"></div>
+    <div class="row-2">
+      <div class="field"><label>Nombre de contacto</label><input id="f-contacto"></div>
+      <div class="field"><label>WhatsApp (solo números, con 52)</label><input id="f-whatsapp" placeholder="528711234567"></div>
+    </div>
+    <div class="row-2">
+      <div class="field"><label>Teléfono de contacto</label><input id="f-telContacto"></div>
+      <div class="field"><label>Teléfono del negocio</label><input id="f-telNegocio"></div>
+    </div>
+    <div class="field"><label>Instagram (URL)</label><input id="f-instagram" placeholder="https://instagram.com/…"></div>
+    <div class="field"><label>Facebook (URL)</label><input id="f-facebook" placeholder="https://facebook.com/…"></div>
+    <div class="field"><label>Sitio web (URL)</label><input id="f-web" placeholder="https://…"></div>
+    <div class="field">
+      <label>Video (se reproduce en la ficha del proveedor)</label>
+      <input id="f-video" placeholder="Enlace de YouTube, Vimeo o .mp4">
+      <div style="display:flex;gap:.6rem;align-items:center;margin-top:.5rem;flex-wrap:wrap">
+        <label class="btn-soft" style="margin:0">Subir video…<input type="file" id="edVideoFile" accept="video/*" hidden></label>
+        <span style="color:var(--muted);font-size:.8rem">Para videos largos usa un enlace de YouTube (los archivos deben ser cortos).</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Fotos</label>
+      <div class="media-mini" id="edPhotos"></div>
+      <div class="row-2">
+        <input id="edPhotoUrl" placeholder="URL de la foto">
+        <div style="display:flex;gap:.5rem">
+          <button class="btn-soft" id="edAddUrl" type="button">Agregar URL</button>
+          <label class="btn-soft" style="margin:0;text-align:center">Subir…<input type="file" id="edFile" accept="image/*" hidden></label>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:.7rem;margin-top:1.2rem">
+      <button class="btn-primary" id="edSave">Guardar</button>
+      <button class="btn-soft" id="edCancel" style="flex:0 0 auto">Cancelar</button>
+    </div>
+  </div>
+</aside>
+
+<script type="module">
+import { brandHTML, ICONS, escapeHtml, toast } from "./ui.js";
+import { ADMIN } from "./config.js";
+import { CATEGORIAS } from "./seed.js";
+import * as store from "./store.js";
+
+document.getElementById("loginBrand").innerHTML = brandHTML({ vertical:true });
+document.getElementById("adminBrand").innerHTML = brandHTML({ onDark:true });
+document.getElementById("edClose").innerHTML = ICONS.close;
+document.getElementById("f-categoria").innerHTML = CATEGORIAS.map(c=>`<option>${c.nombre}</option>`).join("");
+
+let PROV=[], EQ=[], SITE=null;
+
+(async ()=>{
+  await store.init();
+  const pill=document.getElementById("modePill");
+  if(store.getMode()==="cloud"){ pill.textContent="● Nube"; pill.className="pill cloud"; }
+  else { pill.textContent="● Local"; pill.className="pill local"; }
+  store.onAdminChange(v=>{ if(v) showAdmin(); });
+  if(store.isAdmin()) showAdmin();
+})();
+
+// Login
+document.getElementById("loginForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const msg=document.getElementById("loginMsg"); msg.className="form-msg";
+  const b=document.getElementById("loginBtn"); b.disabled=true; b.textContent="Entrando…";
+  try{ await store.adminLogin(document.getElementById("user").value, document.getElementById("pass").value); showAdmin(); }
+  catch(err){ msg.className="form-msg err"; msg.textContent=friendly(err); }
+  finally{ b.disabled=false; b.textContent="Entrar"; }
+});
+function friendly(err){
+  const c=(err&&err.code)||"";
+  if(c.includes("wrong-password")||c.includes("invalid-credential")||c.includes("user-not-found"))
+    return "Usuario o contraseña incorrectos. (En la nube crea el usuario admin en Firebase, ver README.)";
+  return (err&&err.message)||"No se pudo iniciar sesión.";
+}
+document.getElementById("logoutBtn").onclick=async()=>{ await store.adminLogout(); location.reload(); };
+
+async function showAdmin(){
+  document.getElementById("loginView").classList.add("hidden");
+  document.getElementById("adminView").classList.remove("hidden");
+  await Promise.all([loadProv(), loadEq(), loadSite()]);
+}
+
+// Tabs
+document.querySelectorAll(".atab").forEach(t=>t.onclick=()=>{
+  document.querySelectorAll(".atab").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".apanel").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active"); document.getElementById("p-"+t.dataset.tab).classList.add("active");
+});
+
+// ---------- Proveedores ----------
+async function loadProv(){
+  PROV = (await store.getProviders()).map(p=>Object.assign({fotos:[],descripcion:"",categoria:"Otros",destacado:false,badge:"",whatsapp:"",instagram:"",facebook:"",web:"",contacto:"",telContacto:"",telNegocio:"",giro:"",color:"",video:""},p));
+  renderProv();
+}
+const provSearch=document.getElementById("provSearch");
+provSearch.oninput=renderProv;
+function renderProv(){
+  const q=provSearch.value.trim().toLowerCase();
+  const list=PROV.filter(p=>!q||(p.nombre+" "+p.categoria+" "+p.giro).toLowerCase().includes(q)).sort((a,b)=>(a.id||0)-(b.id||0));
+  document.getElementById("provBody").innerHTML=list.map(p=>`
+    <tr>
+      <td>${String(p.id).padStart(2,"0")}</td>
+      <td><strong>${escapeHtml(p.nombre)}</strong><div style="color:var(--muted);font-size:.8rem">${escapeHtml((p.giro||"").slice(0,42))}</div></td>
+      <td><span class="tag">${escapeHtml(p.categoria)}</span></td>
+      <td>${p.destacado?'<span class="star">★</span>':'—'}</td>
+      <td><div class="acts"><button class="icon-btn" data-ed="${p.id}">${ICONS.edit}</button><button class="icon-btn del" data-del="${p.id}">${ICONS.trash}</button></div></td>
+    </tr>`).join("");
+  document.getElementById("provCount").textContent=`${PROV.length} proveedores`;
+  document.querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>openEditor(b.dataset.ed));
+  document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>delProv(b.dataset.del));
+}
+async function delProv(id){
+  const p=PROV.find(x=>String(x.id)===String(id)); if(!p)return;
+  if(!confirm(`¿Eliminar "${p.nombre}"?`))return;
+  PROV=PROV.filter(x=>String(x.id)!==String(id));
+  await persist("Proveedor eliminado"); renderProv();
+}
+document.getElementById("addBtn").onclick=()=>openEditor(null, PROV.reduce((m,p)=>Math.max(m,p.id||0),0)+1);
+document.getElementById("seedBtn").onclick=async()=>{
+  if(!confirm("Cargar/actualizar los 62 proveedores del Excel. ¿Continuar?"))return;
+  try{ await store.publishSeed(); await loadProv(); toast("Lista inicial cargada"); }catch(e){ toast("Error","err"); }
+};
+async function persist(msg){ try{ await store.saveProviders(PROV); toast(msg||"Guardado"); }catch(e){ toast("Error al guardar. ¿Sesión en la nube?","err"); } }
+
+// Editor
+const editor=document.getElementById("editor"), edOv=document.getElementById("edOverlay");
+let photos=[];
+const F=k=>document.getElementById("f-"+k);
+function openEditor(id,newId){
+  const p = id!=null ? PROV.find(x=>String(x.id)===String(id)) : {id:newId,categoria:"Otros",fotos:[]};
+  document.getElementById("edTitle").textContent = id!=null?"Editar proveedor":"Nuevo proveedor";
+  document.getElementById("f-id").value=p.id;
+  ["nombre","giro","descripcion","contacto","whatsapp","telContacto","telNegocio","instagram","facebook","web","badge","video"].forEach(k=>F(k).value=p[k]||"");
+  F("categoria").value=p.categoria||"Otros";
+  F("destacado").checked=!!p.destacado;
+  photos=(p.fotos||[]).slice(); renderPhotos();
+  editor.classList.add("open"); edOv.classList.add("open");
+}
+function closeEditor(){ editor.classList.remove("open"); edOv.classList.remove("open"); }
+document.getElementById("edClose").onclick=closeEditor;
+document.getElementById("edCancel").onclick=closeEditor;
+edOv.onclick=closeEditor;
+function renderPhotos(){
+  document.getElementById("edPhotos").innerHTML = photos.length
+    ? photos.map((f,i)=>`<div class="m"><img src="${escapeHtml(f)}"><button data-rm="${i}">×</button></div>`).join("")
+    : `<span class="muted" style="color:var(--muted);font-size:.85rem">Sin fotos</span>`;
+  document.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ photos.splice(+b.dataset.rm,1); renderPhotos(); });
+}
+document.getElementById("edAddUrl").onclick=()=>{ const u=document.getElementById("edPhotoUrl").value.trim(); if(u){photos.push(u);document.getElementById("edPhotoUrl").value="";renderPhotos();} };
+document.getElementById("edFile").onchange=async e=>{ const f=e.target.files[0]; if(!f)return; try{ photos.push(await compress(f)); renderPhotos(); }catch(err){ toast("Imagen inválida","err"); } e.target.value=""; };
+document.getElementById("edVideoFile").onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  if(f.size > 1.5*1024*1024){ toast("Video muy grande. Usa un enlace de YouTube.","err"); e.target.value=""; return; }
+  try{ F("video").value = await readDataURL(f); toast("Video cargado"); }catch(err){ toast("No se pudo cargar el video","err"); }
+  e.target.value="";
+};
+document.getElementById("edSave").onclick=async()=>{
+  const id=+document.getElementById("f-id").value;
+  const nombre=F("nombre").value.trim(); if(!nombre){ toast("El nombre es obligatorio","err"); return; }
+  const cat=F("categoria").value;
+  const color=(CATEGORIAS.find(c=>c.nombre===cat)||{}).color||"#1877E6";
+  const obj={id,nombre,categoria:cat,color,destacado:F("destacado").checked,fotos:photos};
+  ["giro","descripcion","contacto","whatsapp","telContacto","telNegocio","instagram","facebook","web","badge","video"].forEach(k=>obj[k]=F(k).value.trim());
+  const i=PROV.findIndex(x=>x.id===id);
+  if(i>=0) PROV[i]=Object.assign(PROV[i],obj); else PROV.push(obj);
+  await persist("Proveedor guardado"); renderProv(); closeEditor();
+};
+
+// ---------- Equipo ----------
+async function loadEq(){
+  try{ EQ=await store.getEquipo(); }catch(e){ EQ=[]; }
+  const badge=document.getElementById("eqBadge");
+  if(EQ.length){ badge.textContent=EQ.length; badge.classList.remove("hidden"); } else badge.classList.add("hidden");
+  document.getElementById("eqCount").textContent=`${EQ.length} solicitud${EQ.length!==1?"es":""}`;
+  const body=document.getElementById("eqBody");
+  if(!EQ.length){ body.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:2rem">Aún no hay solicitudes.</td></tr>`; return; }
+  body.innerHTML=EQ.map(r=>`<tr>
+    <td style="white-space:nowrap;color:var(--muted)">${fdate(r.createdAt)}</td>
+    <td><strong>${escapeHtml(r.nombre)}</strong></td>
+    <td><a href="https://wa.me/${(r.telefono||'').replace(/[^\d]/g,'')}" target="_blank" style="color:var(--primary);font-weight:600">${escapeHtml(r.telefono)}</a></td>
+    <td>${escapeHtml(r.giro)}</td>
+    <td style="color:var(--muted)">${escapeHtml(r.mensaje||"")}</td>
+    <td><button class="icon-btn del" data-rme="${r.id}">${ICONS.trash}</button></td></tr>`).join("");
+  document.querySelectorAll("[data-rme]").forEach(b=>b.onclick=async()=>{ if(!confirm("¿Eliminar solicitud?"))return; try{ await store.deleteEquipo(b.dataset.rme); await loadEq(); toast("Eliminada"); }catch(e){ toast("Error","err"); } });
+}
+document.getElementById("refreshBtn").onclick=loadEq;
+document.getElementById("exportBtn").onclick=()=>{
+  if(!EQ.length){ toast("Sin datos","err"); return; }
+  const rows=[["Fecha","Nombre","Telefono","Giro","Mensaje"]];
+  EQ.forEach(r=>rows.push([fdate(r.createdAt),r.nombre,r.telefono,r.giro,(r.mensaje||"").replace(/\n/g," ")]));
+  const csv=rows.map(r=>r.map(c=>`"${String(c||"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"})); a.download="equipo_canirac.csv"; a.click();
+};
+function fdate(ts){ if(!ts)return""; const d=new Date(ts); return d.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})+" "+d.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}); }
+
+// ---------- Apariencia (color + logo) ----------
+async function loadSite(){
+  try{ SITE = await store.getSite(); }catch(e){ SITE = {}; }
+  SITE.tema = SITE.tema || { primary:"", logo:"" };
+  renderTema();
+}
+function renderTema(){
+  const c = SITE.tema.primary || "#1877E6";
+  document.getElementById("th-color").value = /^#[0-9a-f]{6}$/i.test(c) ? c : "#1877E6";
+  document.getElementById("th-color-hex").value = SITE.tema.primary || "";
+  renderLogoPrev(SITE.tema.logo || "");
+  const url = SITE.tema.logo || "";
+  document.getElementById("th-logo-url").value = (url && !url.startsWith("data:")) ? url : "";
+}
+function renderLogoPrev(url){
+  document.getElementById("th-logo-prev").innerHTML = url
+    ? `<img src="${url}" style="width:100%;height:100%;object-fit:contain">`
+    : `<span style="color:var(--muted);font-size:.68rem;text-align:center">Logo<br>actual</span>`;
+}
+document.getElementById("th-color").oninput = e=>{ document.getElementById("th-color-hex").value = e.target.value.toUpperCase(); };
+document.getElementById("th-color-hex").oninput = e=>{ const v=e.target.value.trim(); if(/^#[0-9a-f]{6}$/i.test(v)) document.getElementById("th-color").value=v; };
+document.getElementById("th-reset").onclick = ()=>{ document.getElementById("th-color-hex").value=""; document.getElementById("th-color").value="#1877E6"; };
+document.getElementById("th-logo-file").onchange = async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  try{ SITE.tema.logo = await compress(f,300,0.92,"image/png"); renderLogoPrev(SITE.tema.logo); document.getElementById("th-logo-url").value=""; toast("Logo cargado"); }
+  catch(err){ toast("Imagen inválida","err"); }
+  e.target.value="";
+};
+document.getElementById("th-logo-clear").onclick = ()=>{ SITE.tema.logo=""; renderLogoPrev(""); document.getElementById("th-logo-url").value=""; };
+document.getElementById("th-save").onclick = async ()=>{
+  const hex=document.getElementById("th-color-hex").value.trim();
+  SITE.tema.primary = /^#[0-9a-f]{6}$/i.test(hex) ? hex : "";
+  const url=document.getElementById("th-logo-url").value.trim();
+  if(url) SITE.tema.logo = url;
+  try{ await store.saveSite(SITE); toast("Apariencia guardada. Recarga el sitio para verla."); }
+  catch(e){ toast("Error al guardar. ¿Sesión en la nube?","err"); }
+};
+
+// util
+function readDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
+function compress(file,maxW=1000,q=0.72,type="image/jpeg"){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const s=Math.min(1,maxW/img.width);const c=document.createElement("canvas");c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);res(c.toDataURL(type,q));};img.onerror=rej;img.src=r.result;};r.onerror=rej;r.readAsDataURL(file);});}
+</script>
+</body>
+</html>

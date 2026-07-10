@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CANIRAC Laguna — Catálogo de Proveedores</title>
+<meta name="description" content="Catálogo de proveedores de CANIRAC Laguna. Encuentra los mejores proveedores para tu restaurante.">
+<meta name="theme-color" content="#1877E6">
+<link rel="icon" href="logoapp.png" type="image/png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CANIRAC Laguna">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ===== Portada de bienvenida ===== -->
+<div class="splash" id="splash">
+  <div class="splash-inner">
+    <div id="splashBrand"></div>
+    <p class="splash-tag">Catálogo de Proveedores</p>
+    <p class="splash-sub">Los mejores proveedores para tu restaurante, en La Laguna.</p>
+    <button class="splash-btn" id="enterBtn">Entrar al catálogo</button>
+    <div class="splash-social" id="splashSocial"></div>
+  </div>
+</div>
+
+<!-- ===== Menú lateral (drawer) ===== -->
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-top">
+    <button class="close" id="drawerClose" aria-label="Cerrar" data-ic="close"></button>
+    <div id="drawerBrand"></div>
+  </div>
+  <nav class="drawer-menu" id="drawerMenu">
+    <a data-nav="inicio" data-ic="home">Inicio</a>
+    <a data-nav="categorias" data-ic="grid">Categorías</a>
+    <a data-nav="destacados" data-ic="star">Proveedores destacados</a>
+    <a data-nav="promociones" data-ic="tag">Promociones</a>
+    <a data-nav="favoritos" data-ic="heart">Favoritos</a>
+    <a data-nav="contacto" data-ic="phone">Contacto</a>
+  </nav>
+  <hr>
+  <div class="rs-title">Redes sociales</div>
+  <div class="drawer-social" id="drawerSocial"></div>
+  <div class="drawer-info" id="drawerInfo"></div>
+</aside>
+
+<!-- ===== App ===== -->
+<div class="app">
+  <header class="app-header">
+    <div class="bar">
+      <button class="hicon" id="menuBtn" aria-label="Menú" data-ic="menu"><span class="dot"></span></button>
+      <button class="hicon" aria-label="Notificaciones" data-ic="bell"></button>
+    </div>
+    <div class="center-logo" id="headerBrand"></div>
+  </header>
+
+  <!-- Vista INICIO -->
+  <main class="content view" id="view-inicio">
+    <div class="marquee" id="logoMarquee" style="display:none"></div>
+    <div class="hero-title">
+      <div class="eyebrow">Catálogo de</div>
+      <h1>Proveedores</h1>
+    </div>
+    <p class="hero-sub">Encuentra los mejores proveedores para tu restaurante.</p>
+
+    <div class="search">
+      <span class="sic" data-ic="search"></span>
+      <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar proveedor… (ej: lentes, hielo, carne)">
+    </div>
+
+    <div class="list" id="homeResults" style="display:none"></div>
+
+    <div id="homeSections">
+    <section class="section">
+      <div class="sec-head"><h2>Categorías</h2><a class="link" data-nav="categorias">Ver todas</a></div>
+      <div class="cat-grid" id="catGridHome"></div>
+    </section>
+
+    <section class="section">
+      <div class="sec-head"><h2>Proveedores destacados</h2><a class="link" data-nav="todos">Ver todos</a></div>
+      <div class="dest-row" id="destRow"></div>
+    </section>
+
+    <div class="promo-banner">
+      <div class="pb-ico" data-ic="store"></div>
+      <div class="pb-txt">
+        <h3>¿Eres proveedor?</h3>
+        <p>Únete a nuestro catálogo y llega a más restaurantes.</p>
+        <button class="pill-btn" id="joinBtn">Regístrate aquí <span data-ic="chevR"></span></button>
+      </div>
+    </div>
+
+    <section class="section">
+      <div class="sec-head"><h2>¿Por qué elegir CANIRAC Laguna?</h2></div>
+      <div class="why">
+        <div class="w"><div class="wic" data-ic="shield"></div><span>Proveedores confiables</span></div>
+        <div class="w"><div class="wic" data-ic="star"></div><span>Beneficios para socios</span></div>
+        <div class="w"><div class="wic" data-ic="trending"></div><span>Apoyo al crecimiento</span></div>
+      </div>
+    </section>
+    </div>
+  </main>
+
+  <!-- Vista CATEGORÍAS -->
+  <main class="content view hidden" id="view-categorias">
+    <div class="view-head">
+      <button class="back-btn" data-nav="inicio" data-ic="chevL"></button>
+      <div><h2>Categorías</h2><div class="sub">Explora por tipo de proveedor</div></div>
+    </div>
+    <div class="cat-grid all" id="catGridAll"></div>
+  </main>
+
+  <!-- Vista LISTA (categoría / búsqueda / favoritos / destacados / promos) -->
+  <main class="content view hidden" id="view-lista">
+    <div class="view-head">
+      <button class="back-btn" id="listBack" data-ic="chevL"></button>
+      <div><h2 id="listTitle">Proveedores</h2><div class="sub" id="listSub"></div></div>
+    </div>
+    <div class="list" id="listGrid"></div>
+  </main>
+
+  <!-- Vista CONTACTO -->
+  <main class="content view hidden" id="view-contacto">
+    <div class="view-head">
+      <button class="back-btn" data-nav="inicio" data-ic="chevL"></button>
+      <div><h2>Contacto</h2><div class="sub">CANIRAC Laguna</div></div>
+    </div>
+    <div class="contact-card" id="contactCard"></div>
+  </main>
+</div>
+
+<!-- ===== Barra inferior ===== -->
+<nav class="bottom-nav">
+  <button class="bnav active" data-nav="inicio"><span data-ic="home"></span>Inicio</button>
+  <button class="bnav" data-nav="categorias"><span data-ic="grid"></span>Categorías</button>
+  <button class="bnav" data-nav="favoritos"><span data-ic="heart"></span>Favoritos</button>
+  <button class="bnav" data-nav="contacto"><span data-ic="phone"></span>Contacto</button>
+</nav>
+
+<!-- ===== Modal proveedor ===== -->
+<div class="modal-overlay" id="provModal">
+  <div class="modal">
+    <div class="modal-head" id="pmHead">
+      <button class="m-close" id="pmClose" data-ic="close"></button>
+      <div class="mh-cat" id="pmCat"></div>
+      <h3 id="pmName"></h3>
+    </div>
+    <div class="modal-body" id="pmBody"></div>
+  </div>
+</div>
+
+<!-- ===== Modal registro (equipo) ===== -->
+<div class="modal-overlay form-modal" id="joinModal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head" style="background:var(--grad)">
+      <button class="m-close" id="jmClose" data-ic="close"></button>
+      <div class="mh-cat">Forma parte</div>
+      <h3>Únete a CANIRAC Laguna</h3>
+    </div>
+    <div class="modal-body">
+      <div id="jmForm">
+        <p class="hero-sub" style="margin-top:0">Déjanos tus datos y un asesor te contactará.</p>
+        <div class="form-msg" id="jmMsg"></div>
+        <div class="field"><label>Nombre completo *</label><input id="j-nombre" placeholder="Tu nombre"></div>
+        <div class="field"><label>Teléfono / WhatsApp *</label><input id="j-telefono" type="tel" placeholder="Ej: 871 123 4567"></div>
+        <div class="field"><label>Giro de tu negocio *</label><input id="j-giro" placeholder="Ej: Restaurante, cafetería…"></div>
+        <div class="field"><label>Mensaje (opcional)</label><textarea id="j-mensaje" placeholder="Cuéntanos sobre tu negocio"></textarea></div>
+        <button class="btn-primary" id="jmSend">Enviar solicitud</button>
+      </div>
+      <div id="jmOk" class="success-box hidden">
+        <div class="circle">✓</div>
+        <h3 style="font-size:1.3rem">¡Solicitud enviada!</h3>
+        <p class="hero-sub" style="margin:.4rem auto 1.2rem">Gracias por tu interés. Pronto te contactaremos.</p>
+        <button class="btn-primary" id="jmDone" style="max-width:200px;margin:0 auto">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+<script src="pwa.js"></script>
+</body>
+</html>

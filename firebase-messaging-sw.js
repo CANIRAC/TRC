@@ -1,32 +1,22 @@
 /* CANIRAC Laguna — Service Worker de mensajería (avisos push)
-   Recibe los avisos cuando la app está cerrada o en segundo plano.
+   Recibe los avisos aunque la app esté cerrada y SIEMPRE los muestra.
+   Es un manejador de push "puro" (sin SDK), que es lo más confiable en iPhone.
    No necesitas editar este archivo. */
-importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js");
 
-firebase.initializeApp({
-  apiKey: "AIzaSyBQfqXwOGRSo1manTh6y_ouyfE_wY9UrVM",
-  authDomain: "canirac-2f1a4.firebaseapp.com",
-  projectId: "canirac-2f1a4",
-  storageBucket: "canirac-2f1a4.firebasestorage.app",
-  messagingSenderId: "115819887894",
-  appId: "1:115819887894:web:5e3ca8de54c36832482437",
-  measurementId: "G-NM08HT0Y96"
-});
-
-const messaging = firebase.messaging();
-
-// Aviso recibido con la app cerrada / en segundo plano
-messaging.onBackgroundMessage((payload) => {
-  const n = (payload && payload.notification) || {};
-  const titulo = n.title || "CANIRAC Laguna";
-  const opciones = {
-    body: n.body || "Tienes un nuevo aviso",
-    icon: "icon-192.png",
+// Aviso recibido (app cerrada o en segundo plano)
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch (e) { payload = {}; }
+  const d = payload.data || payload.notification || payload || {};
+  const title = d.title || "CANIRAC Laguna";
+  const options = {
+    body: d.body || "Tienes un nuevo aviso",
+    icon: d.icon || "icon-192.png",
     badge: "icon-192.png",
-    data: { url: (payload.fcmOptions && payload.fcmOptions.link) || "index.html" }
+    data: { url: d.link || d.url || "index.html" },
+    tag: "canirac-aviso"
   };
-  self.registration.showNotification(titulo, opciones);
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 // Al tocar el aviso, abre el catálogo

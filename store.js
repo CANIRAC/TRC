@@ -298,9 +298,15 @@ async function _registerPush(interactive) {
   }
   const messaging = msgMod.getMessaging(_app);
 
+  // Registrar el SW de mensajería en SU PROPIO ámbito, para que NO choque con
+  // el service worker del catálogo (sw.js). Ese choque hacía que el push llegara
+  // pero nadie lo mostrara.
   let reg;
-  try { reg = await navigator.serviceWorker.register("firebase-messaging-sw.js"); }
-  catch (e) { reg = await navigator.serviceWorker.ready.catch(() => undefined); }
+  try {
+    reg = await navigator.serviceWorker.register("firebase-messaging-sw.js", { scope: "/firebase-cloud-messaging-push-scope" });
+  } catch (e) {
+    try { reg = await navigator.serviceWorker.register("firebase-messaging-sw.js"); } catch (e2) { reg = undefined; }
+  }
 
   const token = await msgMod.getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
   if (!token) { if (interactive) throw new Error("sin-token"); return null; }
@@ -319,13 +325,14 @@ async function _registerPush(interactive) {
   try {
     if (msgMod.onMessage) {
       msgMod.onMessage(messaging, (payload) => {
-        const n = (payload && payload.notification) || {};
+        const d = (payload && (payload.data || payload.notification)) || {};
         try {
           if (reg && reg.showNotification) {
-            reg.showNotification(n.title || "CANIRAC Laguna", {
-              body: n.body || "",
-              icon: "icon-192.png",
-              data: { url: (payload.fcmOptions && payload.fcmOptions.link) || "index.html" }
+            reg.showNotification(d.title || "CANIRAC Laguna", {
+              body: d.body || "",
+              icon: d.icon || "icon-192.png",
+              data: { url: d.link || d.url || "index.html" },
+              tag: "canirac-aviso"
             });
           }
         } catch (e) {}

@@ -314,10 +314,17 @@ document.querySelectorAll(".atab").forEach(t=>t.onclick=()=>{
 // ============================================================
 async function uploadImageFile(file){
   if(store.storageAvailable && store.storageAvailable()){
-    try{ return await store.uploadFile(file, "fotos", pct=>toast("Subiendo foto… "+pct+"%")); }
-    catch(e){ console.warn("Storage no disponible para imagen, usando copia local:", e); }
+    toast("Subiendo foto…");
+    try{
+      const url = await store.uploadFile(file, "fotos"); // subida directa (no se queda en 0%)
+      toast("Foto lista");
+      return url;
+    }catch(e){
+      console.warn("Storage no disponible para imagen, usando copia local:", e);
+      toast("Se guardó una copia local de la foto","",3500);
+    }
   }
-  return await compress(file); // respaldo: guarda una versión comprimida
+  return await compress(file); // respaldo: versión comprimida (sin límite de tamaño para ti)
 }
 function videoDuration(file){
   return new Promise((res,rej)=>{

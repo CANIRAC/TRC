@@ -229,6 +229,39 @@ export async function googleLogin() {
 export function currentUser() {
   return (_auth && _auth.currentUser) ? _auth.currentUser : null;
 }
+export async function logout() {
+  await init();
+  if (_mode === "cloud" && _auth) { try { await _authFns.signOut(_auth); } catch (e) {} }
+  sessionStorage.removeItem(LS.admin);
+  notifyAdmin();
+}
+
+// ---------- Datos por usuario (favoritos, búsquedas) ----------
+// Se guardan en Firestore en users/{uid} SOLO si el visitante inició sesión.
+export async function getUserData() {
+  await init();
+  const u = currentUser();
+  if (_mode === "cloud" && u && _db && _fs) {
+    try {
+      const ref = _fs.doc(_db, "users", u.uid);
+      const snap = await _fs.getDoc(ref);
+      return snap.exists() ? snap.data() : {};
+    } catch (e) { console.warn("getUserData", e); }
+  }
+  return null; // invitado / sin nube -> se usa el guardado local
+}
+export async function saveUserData(data) {
+  await init();
+  const u = currentUser();
+  if (_mode === "cloud" && u && _db && _fs) {
+    try {
+      const ref = _fs.doc(_db, "users", u.uid);
+      await _fs.setDoc(ref, Object.assign({ email: u.email || "", nombre: u.displayName || "", updatedAt: Date.now() }, data), { merge: true });
+      return true;
+    } catch (e) { console.warn("saveUserData", e); }
+  }
+  return false;
+}
 
 export function onAdminChange(fn) {
   _adminListeners.push(fn);
@@ -254,21 +287,29 @@ export function storageAvailable() { return !!(_storage && _storageFns); }
 
 export async function uploadFile(file, folder = "media", onProgress) {
   await init();
-  if (_mode === "cloud" && _storage && _storageFns) {
-    const safe = (file.name || "archivo").replace(/[^\w.\-]+/g, "_").slice(-50);
-    const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${safe}`;
-    const sref = _storageFns.ref(_storage, path);
-    if (onProgress && _storageFns.uploadBytesResumable) {
-      const task = _storageFns.uploadBytesResumable(sref, file);
-      await new Promise((res, rej) => {
-        task.on("state_changed",
-          (s) => { try { onProgress(Math.round((s.bytesTransferred / s.totalBytes) * 100)); } catch (e) {} },
-          rej, res);
-      });
-    } else {
-      await _storageFns.uploadBytes(sref, file);
-    }
-    return await _storageFns.getDownloadURL(sref);
+  if (!(_mode === "cloud" && _storage && _storageFns)) throw new Error("storage-no-disponible");
+  const safe = (file.name || "archivo").replace(/[^\w.\-]+/g, "_").slice(-50);
+  const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${safe}`;
+  const sref = _storageFns.ref(_storage, path);
+  const TIMEOUT = 60000; // 60 s: si la subida se cuelga, no se queda esperando para siempre
+
+  if (onProgress && _storageFns.uploadBytesResumable) {
+    // Subida con progreso (para videos): resumible + tiempo límite
+    const task = _storageFns.uploadBytesResumable(sref, file);
+    await new Promise((res, rej) => {
+      let done = false;
+      const to = setTimeout(() => { if (!done) { done = true; try { task.cancel(); } catch (e) {} rej(new Error("storage-timeout")); } }, TIMEOUT);
+      task.on("state_changed",
+        (s) => { try { onProgress(Math.round((s.bytesTransferred / s.totalBytes) * 100)); } catch (e) {} },
+        (err) => { if (!done) { done = true; clearTimeout(to); rej(err); } },
+        () => { if (!done) { done = true; clearTimeout(to); res(); } });
+    });
+  } else {
+    // Subida directa (para imágenes): termina o falla rápido, con tiempo límite
+    await Promise.race([
+      _storageFns.uploadBytes(sref, file),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("storage-timeout")), TIMEOUT))
+    ]);
   }
-  throw new Error("storage-no-disponible");
+  return await _storageFns.getDownloadURL(sref);
 }

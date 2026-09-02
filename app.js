@@ -4,14 +4,16 @@
 import { brandHTML, ICONS, CATEGORY_ICONS, waLink, escapeHtml, toast, CAMARA_WA, videoEmbed } from "./ui.js";
 import { CONTACTO, MENSAJE_PROVEEDOR } from "./config.js";
 import { CATEGORIAS } from "./seed.js";
-import { getProviders, getSite, addEquipo, googleLogin, currentUser } from "./store.js";
+import { getProviders, getSite, addEquipo, googleLogin, currentUser, logout, getUserData, saveUserData } from "./store.js";
 
 const FAV_KEY = "canirac_favs_v1";
+const RECENT_KEY = "canirac_recent_v1";      // búsquedas recientes
 const ENTERED_KEY = "canirac_entered_v1";   // recuerda que el visitante ya entró (invitado o Google)
 const AUTO_KEY = "canirac_notif_auto_v1";   // pop-up de aviso: una vez por sesión
 let PROV = [], SITE = null;
 let entered = false, dataReady = false, autoNotifShown = false;
 let favs = loadFavs();
+let recent = loadRecent();
 
 // ---------- Iconos ----------
 function fillIcons(root=document){
@@ -27,9 +29,83 @@ function fillIcons(root=document){
 
 // ---------- Utilidades ----------
 function loadFavs(){ try{ return JSON.parse(localStorage.getItem(FAV_KEY))||[]; }catch(e){ return []; } }
-function saveFavs(){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(favs)); }catch(e){} }
+function saveFavsLocal(){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(favs)); }catch(e){} }
+function saveFavs(){ saveFavsLocal(); if(currentUser()) saveUserData({ favs, searches: recent }); }
 function isFav(id){ return favs.includes(String(id)); }
 function toggleFav(id){ id=String(id); const i=favs.indexOf(id); if(i>=0)favs.splice(i,1); else favs.push(id); saveFavs(); }
+
+// ---------- Búsquedas recientes (por cuenta si hay sesión) ----------
+function loadRecent(){ try{ return JSON.parse(localStorage.getItem(RECENT_KEY))||[]; }catch(e){ return []; } }
+function saveRecentLocal(){ try{ localStorage.setItem(RECENT_KEY, JSON.stringify(recent)); }catch(e){} }
+function addRecent(term){
+  term=(term||"").trim(); if(term.length<2) return;
+  recent=[term, ...recent.filter(x=>x.toLowerCase()!==term.toLowerCase())].slice(0,8);
+  saveRecentLocal(); renderRecent();
+  if(currentUser()) saveUserData({ favs, searches: recent });
+}
+function renderRecent(){
+  const box=document.getElementById("recentSearches");
+  if(!box) return;
+  const inp=document.getElementById("searchInput");
+  const empty=(!inp || !inp.value.trim());
+  if(!recent.length || !empty){ box.style.display="none"; box.innerHTML=""; return; }
+  box.style.display="";
+  box.innerHTML = `<span class="rc-lbl">Recientes</span>` +
+    recent.map(t=>`<button class="rc-chip" data-q="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join("") +
+    `<button class="rc-clear" id="rcClear">Borrar</button>`;
+  box.querySelectorAll(".rc-chip").forEach(b=>b.onclick=()=>{
+    const inp=document.getElementById("searchInput"); if(!inp) return;
+    inp.value=b.dataset.q; inp.dispatchEvent(new Event("input")); inp.focus();
+  });
+  const clr=document.getElementById("rcClear");
+  if(clr) clr.onclick=()=>{ recent=[]; saveRecentLocal(); renderRecent(); if(currentUser()) saveUserData({ favs, searches: recent }); };
+}
+
+// ---------- Sesión del visitante (favoritos e historial por cuenta) ----------
+async function syncUser(){
+  const u = currentUser();
+  updateSessionUI(u);
+  if(!u) return;
+  try{
+    const data = await getUserData();
+    if(data){
+      if(Array.isArray(data.favs)) favs = Array.from(new Set([...favs.map(String), ...data.favs.map(String)]));
+      if(Array.isArray(data.searches)) recent = Array.from(new Set([...recent, ...data.searches])).slice(0,8);
+      saveFavsLocal(); saveRecentLocal();
+      saveUserData({ favs, searches: recent }); // que ambos dispositivos converjan
+      renderRecent();
+      document.querySelectorAll("[data-fav]").forEach(b=>{ const on=isFav(b.dataset.fav); b.classList.toggle("on",on); b.innerHTML=on?ICONS.heartFilled:ICONS.heart; });
+    }
+  }catch(e){ console.warn("[CANIRAC] syncUser:", e); }
+}
+function updateSessionUI(u){
+  const el = document.getElementById("drawerSession");
+  if(!el) return;
+  if(u){
+    const name = escapeHtml(((u.displayName||u.email||"Usuario").split(" ")[0])||"Usuario");
+    el.innerHTML =
+      `<div class="ds-user"><span class="ds-av">${ICONS.user}</span>
+         <div class="ds-meta"><b>Hola, ${name}</b><small>${escapeHtml(u.email||"")}</small></div></div>
+       <button class="ds-btn" id="sessLogout">Cerrar sesión</button>`;
+    const lo=document.getElementById("sessLogout");
+    if(lo) lo.onclick=async()=>{ try{ await logout(); }catch(e){} try{ localStorage.removeItem(ENTERED_KEY); }catch(e){} location.reload(); };
+  } else {
+    el.innerHTML =
+      `<div class="ds-guest">Estás como invitado</div>
+       <button class="ds-btn primary" id="sessLogin">Iniciar sesión con Google</button>`;
+    const li=document.getElementById("sessLogin");
+    if(li) li.onclick=async()=>{
+      try{
+        const user=await googleLogin();
+        try{ localStorage.setItem(ENTERED_KEY,"1"); }catch(e){}
+        await syncUser();
+        const n=(user&&(user.displayName||"").split(" ")[0])||"";
+        if(n) toast("¡Hola, "+n+"!");
+        closeDrawer();
+      }catch(e){ console.warn(e); toast("No se pudo iniciar sesión con Google","err"); }
+    };
+  }
+}
 function norm(s){ return (s||"").toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,""); }
 function initials(n){ return (n||"?").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase(); }
 function catColor(cat){ const c = CATEGORIAS.find(x=>x.nombre===cat); return c?c.color:"#1877E6"; }
@@ -65,7 +141,9 @@ async function init(){
     safe(renderDestacados);
     safe(renderContacto);
     safe(renderNotifs);
+    safe(renderRecent);
     safe(applyTheme, SITE);
+    syncUser();               // carga sesión y datos del usuario (si inició sesión)
     dataReady = true;
     maybeAutoNotif();
   } catch(e){
@@ -132,6 +210,7 @@ function wireSplash(){
     try{
       const user = await googleLogin();
       try{ localStorage.setItem(ENTERED_KEY,"1"); }catch(e){}
+      await syncUser();
       const nombre = (user && (user.displayName||"").split(" ")[0]) || "";
       if(nombre) toast("¡Hola, "+nombre+"! 👋");
       hideSplash();
@@ -379,17 +458,21 @@ function resetHomeSearch(){
   const sections = document.getElementById("homeSections");
   if(results){ results.style.display="none"; results.innerHTML=""; }
   if(sections){ sections.style.display=""; }
+  renderRecent();
 }
 function wireSearch(){
   const inp = document.getElementById("searchInput");
   const results = document.getElementById("homeResults");
   const sections = document.getElementById("homeSections");
   let t;
+  // Guarda la búsqueda en el historial cuando el usuario termina de escribir
+  inp.addEventListener("change", ()=>{ addRecent(inp.value); });
   inp.addEventListener("input", ()=>{
     clearTimeout(t);
     const raw = inp.value.trim();
     const q = norm(raw);
-    if(!q){ results.style.display="none"; results.innerHTML=""; sections.style.display=""; return; }
+    if(!q){ results.style.display="none"; results.innerHTML=""; sections.style.display=""; renderRecent(); return; }
+    renderRecent();
     t = setTimeout(()=>{
       const terms = q.split(/\s+/);
       const res = PROV.filter(p=>{

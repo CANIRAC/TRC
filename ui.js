@@ -89,14 +89,15 @@ export function escapeHtml(s) {
   return String(s || "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-export function toast(msg, type = "") {
+export function toast(msg, type = "", ms = 3000) {
   let t = document.querySelector(".toast");
   if (!t) { t = document.createElement("div"); t.className = "toast"; document.body.appendChild(t); }
   t.className = "toast " + type;
   t.textContent = msg;
   requestAnimationFrame(() => t.classList.add("show"));
   clearTimeout(t._h);
-  t._h = setTimeout(() => t.classList.remove("show"), 2600);
+  // Se oculta solo después de 'ms' (por defecto 3 segundos).
+  t._h = setTimeout(() => t.classList.remove("show"), ms);
 }
 
 // Convierte URL de YouTube a embed; deja pasar mp4/otros

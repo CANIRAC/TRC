@@ -4,7 +4,7 @@
 import { brandHTML, ICONS, CATEGORY_ICONS, waLink, escapeHtml, toast, CAMARA_WA, videoEmbed } from "./ui.js";
 import { CONTACTO, MENSAJE_PROVEEDOR } from "./config.js";
 import { CATEGORIAS } from "./seed.js";
-import { getProviders, getSite, addEquipo, googleLogin, currentUser, logout, getUserData, saveUserData, enablePush, pushSupported } from "./store.js";
+import { getProviders, getSite, addEquipo, googleLogin, currentUser, logout, getUserData, saveUserData, enablePush, pushSupported, refreshPushIfEnabled } from "./store.js";
 
 const FAV_KEY = "canirac_favs_v1";
 const RECENT_KEY = "canirac_recent_v1";      // búsquedas recientes
@@ -144,6 +144,7 @@ async function init(){
     safe(renderRecent);
     safe(applyTheme, SITE);
     syncUser();               // carga sesión y datos del usuario (si inició sesión)
+    refreshPushIfEnabled();   // si ya dio permiso, vuelve a guardar su token (auto-repara)
     dataReady = true;
     maybeAutoNotif();
   } catch(e){

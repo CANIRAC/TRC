@@ -276,35 +276,36 @@ export function pushSupported() {
          (typeof PushManager !== "undefined");
 }
 
-// Pide permiso, obtiene el token del dispositivo y lo guarda en Firestore (pushTokens).
-// Devuelve el token si todo salió bien. Lanza un Error con un código si no.
-export async function enablePush() {
+// Núcleo del registro de push. interactive=true pide permiso (botón "Activar");
+// interactive=false solo actúa si YA hay permiso (auto-reparación al abrir la app).
+async function _registerPush(interactive) {
   await init();
-  if (_mode !== "cloud") throw new Error("sin-nube");
-  if (!pushSupported()) throw new Error("sin-soporte");
-  if (!VAPID_KEY) throw new Error("falta-vapid");
+  if (_mode !== "cloud") { if (interactive) throw new Error("sin-nube"); return null; }
+  if (!pushSupported()) { if (interactive) throw new Error("sin-soporte"); return null; }
+  if (!VAPID_KEY) { if (interactive) throw new Error("falta-vapid"); return null; }
 
-  const permiso = await Notification.requestPermission();
-  if (permiso !== "granted") throw new Error("permiso-denegado");
+  if (interactive) {
+    const permiso = await Notification.requestPermission();
+    if (permiso !== "granted") throw new Error("permiso-denegado");
+  } else if (Notification.permission !== "granted") {
+    return null; // sin permiso todavía: no hacemos nada
+  }
 
   const msgMod = await import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-messaging.js`);
   if (msgMod.isSupported) {
     const ok = await msgMod.isSupported().catch(() => false);
-    if (!ok) throw new Error("sin-soporte");
+    if (!ok) { if (interactive) throw new Error("sin-soporte"); return null; }
   }
   const messaging = msgMod.getMessaging(_app);
 
-  // Usa el service worker de mensajería (registrado en su propio ámbito)
   let reg;
   try { reg = await navigator.serviceWorker.register("firebase-messaging-sw.js"); }
   catch (e) { reg = await navigator.serviceWorker.ready.catch(() => undefined); }
 
-  const token = await msgMod.getToken(messaging, {
-    vapidKey: VAPID_KEY,
-    serviceWorkerRegistration: reg
-  });
-  if (!token) throw new Error("sin-token");
+  const token = await msgMod.getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
+  if (!token) { if (interactive) throw new Error("sin-token"); return null; }
 
+  // Guardar/actualizar el token. En modo interactivo, si falla, avisamos (throw).
   try {
     await _fs.setDoc(_fs.doc(_db, "pushTokens", token), {
       token,
@@ -312,9 +313,36 @@ export async function enablePush() {
       ua: (navigator.userAgent || "").slice(0, 140),
       createdAt: Date.now()
     }, { merge: true });
-  } catch (e) { console.warn("guardar token push", e); }
+  } catch (e) { console.warn("guardar token push", e); if (interactive) throw e; }
+
+  // Aviso en primer plano (app abierta): mostrar la notificación del sistema.
+  try {
+    if (msgMod.onMessage) {
+      msgMod.onMessage(messaging, (payload) => {
+        const n = (payload && payload.notification) || {};
+        try {
+          if (reg && reg.showNotification) {
+            reg.showNotification(n.title || "CANIRAC Laguna", {
+              body: n.body || "",
+              icon: "icon-192.png",
+              data: { url: (payload.fcmOptions && payload.fcmOptions.link) || "index.html" }
+            });
+          }
+        } catch (e) {}
+      });
+    }
+  } catch (e) {}
 
   return token;
+}
+
+// Botón "Activar": pide permiso y registra. Lanza Error con código si falla.
+export async function enablePush() { return _registerPush(true); }
+
+// Al abrir la app: si ya se dio permiso, vuelve a guardar el token (se auto-repara).
+export async function refreshPushIfEnabled() {
+  try { return await _registerPush(false); }
+  catch (e) { console.warn("refreshPush", e); return null; }
 }
 
 export function onAdminChange(fn) {

@@ -1,7 +1,7 @@
 /* Service Worker — CANIRAC Laguna PWA
    Sube el número de versión (CACHE) cada vez que cambies archivos
    para que se actualice en los dispositivos. */
-const CACHE = "canirac-v9";
+const CACHE = "canirac-v10";
 const ASSETS = [
   "index.html", "admin.html", "styles.css",
   "app.js", "ui.js", "config.js", "seed.js", "store.js", "pwa.js",

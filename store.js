@@ -21,6 +21,8 @@ let _db = null;
 let _auth = null;
 let _fs = null;      // funciones de firestore
 let _authFns = null; // funciones de auth
+let _storage = null;    // instancia de storage
+let _storageFns = null; // funciones de storage
 let _mode = "local"; // 'cloud' | 'local'
 let _ready = null;
 const _adminListeners = [];
@@ -48,11 +50,12 @@ export function init() {
     if (!USE_FIREBASE) { _mode = "local"; return _mode; }
     try {
       const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 9000));
-      const [{ initializeApp }, fs, authMod] = await Promise.race([
+      const [{ initializeApp }, fs, authMod, storageMod] = await Promise.race([
         Promise.all([
           import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-app.js`),
           import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-firestore.js`),
-          import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-auth.js`)
+          import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-auth.js`),
+          import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-storage.js`)
         ]),
         timeout
       ]);
@@ -61,6 +64,7 @@ export function init() {
       _authFns = authMod;
       _db = fs.getFirestore(app);
       _auth = authMod.getAuth(app);
+      try { _storageFns = storageMod; _storage = storageMod.getStorage(app); } catch (e) { _storage = null; }
       _mode = "cloud";
       authMod.onAuthStateChanged(_auth, () => notifyAdmin());
       return _mode;
@@ -205,8 +209,25 @@ export async function adminLogout() {
 }
 
 export function isAdmin() {
-  if (_mode === "cloud") return !!(_auth && _auth.currentUser);
+  // En la nube, SOLO el correo del administrador cuenta como admin.
+  // (Así, aunque un visitante inicie sesión con Google, no obtiene acceso de admin.)
+  if (_mode === "cloud") return !!(_auth && _auth.currentUser && _auth.currentUser.email === ADMIN.email);
   return sessionStorage.getItem(LS.admin) === "1";
+}
+
+// ---------- Acceso de VISITANTES con Google (solo para el catálogo) ----------
+export async function googleLogin() {
+  await init();
+  if (_mode !== "cloud" || !_auth || !_authFns || !_authFns.GoogleAuthProvider) {
+    throw new Error("sin-nube");
+  }
+  const provider = new _authFns.GoogleAuthProvider();
+  try { provider.setCustomParameters({ prompt: "select_account" }); } catch (e) {}
+  const res = await _authFns.signInWithPopup(_auth, provider);
+  return res.user;
+}
+export function currentUser() {
+  return (_auth && _auth.currentUser) ? _auth.currentUser : null;
 }
 
 export function onAdminChange(fn) {
@@ -224,4 +245,30 @@ export async function publishSeed() {
   const current = await getSite();
   await saveSite(Object.assign(clone(DEFAULT_SITE), current));
   return true;
+}
+
+// ============================================================
+//  ARCHIVOS (Firebase Storage) — fotos y videos por proveedor
+// ============================================================
+export function storageAvailable() { return !!(_storage && _storageFns); }
+
+export async function uploadFile(file, folder = "media", onProgress) {
+  await init();
+  if (_mode === "cloud" && _storage && _storageFns) {
+    const safe = (file.name || "archivo").replace(/[^\w.\-]+/g, "_").slice(-50);
+    const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${safe}`;
+    const sref = _storageFns.ref(_storage, path);
+    if (onProgress && _storageFns.uploadBytesResumable) {
+      const task = _storageFns.uploadBytesResumable(sref, file);
+      await new Promise((res, rej) => {
+        task.on("state_changed",
+          (s) => { try { onProgress(Math.round((s.bytesTransferred / s.totalBytes) * 100)); } catch (e) {} },
+          rej, res);
+      });
+    } else {
+      await _storageFns.uploadBytes(sref, file);
+    }
+    return await _storageFns.getDownloadURL(sref);
+  }
+  throw new Error("storage-no-disponible");
 }

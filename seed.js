@@ -1189,5 +1189,6 @@ export const DEFAULT_SITE = {
   contacto: { descripcion: "Trabajamos para fortalecer la industria restaurantera y apoyar el crecimiento de tu negocio.", web: "https://proveedores-caniraclaguna.com" },
   tema: { primary: "", logo: "" },
   categorias: [],
-  slider: []
+  slider: [],
+  notificaciones: []
 };

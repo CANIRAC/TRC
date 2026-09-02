@@ -4,10 +4,13 @@
 import { brandHTML, ICONS, CATEGORY_ICONS, waLink, escapeHtml, toast, CAMARA_WA, videoEmbed } from "./ui.js";
 import { CONTACTO, MENSAJE_PROVEEDOR } from "./config.js";
 import { CATEGORIAS } from "./seed.js";
-import { getProviders, getSite, addEquipo } from "./store.js";
+import { getProviders, getSite, addEquipo, googleLogin, currentUser } from "./store.js";
 
 const FAV_KEY = "canirac_favs_v1";
+const ENTERED_KEY = "canirac_entered_v1";   // recuerda que el visitante ya entró (invitado o Google)
+const AUTO_KEY = "canirac_notif_auto_v1";   // pop-up de aviso: una vez por sesión
 let PROV = [], SITE = null;
+let entered = false, dataReady = false, autoNotifShown = false;
 let favs = loadFavs();
 
 // ---------- Iconos ----------
@@ -37,27 +40,45 @@ function provWa(p){ return (p.whatsapp || p.telContacto || p.telNegocio || "").r
 //  ARRANQUE
 // ============================================================
 init();
+// Failsafe: aunque algo falle o la red tarde, nunca dejar la barra de carga atorada.
+setTimeout(()=>hideLoading(), 12000);
 async function init(){
-  // logos y textos estáticos
-  document.getElementById("headerBrand").innerHTML = brandHTML({ onDark:true, vertical:true, subtitle:true });
-  document.getElementById("drawerBrand").innerHTML = brandHTML({ onDark:true, vertical:true, subtitle:true });
-  renderDrawerSocial();
-  renderDrawerInfo();
-  wireSplash();
-  fillIcons();
-  wireNav();
-  wireSearch();
-  wireModals();
+  try{
+    // logos y textos estáticos
+    document.getElementById("headerBrand").innerHTML = brandHTML({ onDark:true, vertical:true, subtitle:true });
+    document.getElementById("drawerBrand").innerHTML = brandHTML({ onDark:true, vertical:true, subtitle:true });
+    renderDrawerSocial();
+    renderDrawerInfo();
+    wireSplash();
+    wireBell();
+    fillIcons();
+    wireNav();
+    wireSearch();
+    wireModals();
 
-  try { PROV = await getProviders(); } catch(e){ PROV = []; }
-  PROV = PROV.map(p=>Object.assign({fotos:[],descripcion:"",badge:"",promo:"",destacado:false,categoria:"Otros",color:"#1877E6",video:"",logo:""},p));
-  try { SITE = await getSite(); } catch(e){ SITE = {}; }
+    try { PROV = await getProviders(); } catch(e){ PROV = []; }
+    PROV = (PROV||[]).map(p=>Object.assign({fotos:[],descripcion:"",badge:"",promo:"",destacado:false,categoria:"Otros",color:"#1877E6",video:"",videos:[],logo:""},p));
+    try { SITE = await getSite(); } catch(e){ SITE = {}; }
 
-  renderMarquee(SITE && SITE.slider);
-  renderCategorias();
-  renderDestacados();
-  renderContacto();
-  applyTheme(SITE);
+    safe(renderMarquee, SITE && SITE.slider);
+    safe(renderCategorias);
+    safe(renderDestacados);
+    safe(renderContacto);
+    safe(renderNotifs);
+    safe(applyTheme, SITE);
+    dataReady = true;
+    maybeAutoNotif();
+  } catch(e){
+    console.error("[CANIRAC] Error al iniciar el catálogo:", e);
+  } finally {
+    hideLoading();
+  }
+}
+// Ejecuta una función de render sin que un error tumbe el resto del catálogo.
+function safe(fn, ...args){ try{ return fn(...args); }catch(e){ console.error("[CANIRAC] Error en "+((fn&&fn.name)||"render")+":", e); } }
+function hideLoading(){
+  const el = document.getElementById("appLoading");
+  if(el){ el.classList.add("gone"); setTimeout(()=>{ el.style.display="none"; }, 400); }
 }
 
 // ---------- Apariencia (color y logo configurables desde admin) ----------
@@ -78,7 +99,13 @@ function setLogo(url){
   document.querySelectorAll(".brand-img").forEach(img=>{ img.src = url; img.style.display="block"; const f=img.nextElementSibling; if(f) f.style.display="none"; });
 }
 
-// ---------- Portada de bienvenida ----------
+// ---------- Portada de bienvenida / Acceso (Google o invitado) ----------
+function hideSplash(){
+  const splash = document.getElementById("splash");
+  if(splash){ splash.classList.add("gone"); setTimeout(()=>{ splash.style.display="none"; }, 500); }
+  entered = true;
+  maybeAutoNotif();
+}
 function wireSplash(){
   const brand = document.getElementById("splashBrand");
   if(brand) brand.innerHTML = brandHTML({ onDark:true, vertical:true, subtitle:true });
@@ -87,9 +114,95 @@ function wireSplash(){
     `<a href="${CONTACTO.instagram}" target="_blank" rel="noopener" aria-label="Instagram">${ICONS.ig}</a>
      <a href="${CAMARA_WA}" target="_blank" rel="noopener" aria-label="WhatsApp">${ICONS.wa}</a>
      <a href="${CONTACTO.facebook}" target="_blank" rel="noopener" aria-label="Facebook">${ICONS.fb}</a>`;
-  const btn = document.getElementById("enterBtn");
-  const splash = document.getElementById("splash");
-  if(btn && splash) btn.onclick = ()=>{ splash.classList.add("gone"); setTimeout(()=>{ splash.style.display="none"; }, 500); };
+
+  // Si el visitante ya entró antes (invitado o con Google), no volver a preguntar.
+  let yaEntro = false;
+  try{ yaEntro = localStorage.getItem(ENTERED_KEY)==="1"; }catch(e){}
+  if(yaEntro){ hideSplash(); return; }
+
+  const guest = document.getElementById("guestBtn");
+  if(guest) guest.onclick = ()=>{ try{ localStorage.setItem(ENTERED_KEY,"1"); }catch(e){} hideSplash(); };
+
+  const gbtn = document.getElementById("googleBtn");
+  const note = document.getElementById("authNote");
+  if(gbtn) gbtn.onclick = async ()=>{
+    if(note) note.textContent = "";
+    const original = gbtn.innerHTML;
+    gbtn.disabled = true; gbtn.innerHTML = "Conectando…";
+    try{
+      const user = await googleLogin();
+      try{ localStorage.setItem(ENTERED_KEY,"1"); }catch(e){}
+      const nombre = (user && (user.displayName||"").split(" ")[0]) || "";
+      if(nombre) toast("¡Hola, "+nombre+"! 👋");
+      hideSplash();
+    }catch(e){
+      console.warn("[CANIRAC] Google login:", e);
+      if(note) note.textContent = "No se pudo iniciar con Google. Puedes entrar como invitado.";
+      gbtn.disabled = false; gbtn.innerHTML = original;
+    }
+  };
+}
+
+// ---------- Notificaciones (campana) ----------
+const NOTIF_SEEN = "canirac_notif_seen_v1";
+function getNotifs(){ return (SITE && Array.isArray(SITE.notificaciones)) ? SITE.notificaciones : []; }
+function lastSeen(){ try{ return (+localStorage.getItem(NOTIF_SEEN))||0; }catch(e){ return 0; } }
+function renderNotifs(){
+  const dot = document.getElementById("bellDot");
+  if(!dot) return;
+  const unseen = getNotifs().filter(n => (n.createdAt||0) > lastSeen()).length;
+  dot.style.display = unseen>0 ? "block" : "none";
+}
+function wireBell(){
+  const bell = document.getElementById("bellBtn");
+  if(bell) bell.addEventListener("click", ()=>openNotifs(true));
+  const close = document.getElementById("notifClose");
+  if(close) close.addEventListener("click", ()=>closeOverlay("notifModal"));
+  const ov = document.getElementById("notifModal");
+  if(ov) ov.addEventListener("click", e=>{ if(e.target===ov){ ov.classList.remove("open"); document.body.style.overflow=""; } });
+}
+// Pop-up automático de aviso al entrar (una vez por sesión, solo si hay algo nuevo).
+function maybeAutoNotif(){
+  if(!entered || !dataReady || autoNotifShown) return;
+  let sessShown = false;
+  try{ sessShown = sessionStorage.getItem(AUTO_KEY)==="1"; }catch(e){}
+  if(sessShown){ autoNotifShown = true; return; }
+  const unseen = getNotifs().filter(n => (n.createdAt||0) > lastSeen());
+  if(unseen.length){
+    autoNotifShown = true;
+    try{ sessionStorage.setItem(AUTO_KEY,"1"); }catch(e){}
+    setTimeout(()=>openNotifs(false), 500); // no marca como visto: el punto rojo permanece
+  }
+}
+function fmtNotifDate(ts){ try{ return new Date(ts).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}); }catch(e){ return ""; } }
+function openNotifs(markSeen=true){
+  const list = getNotifs().slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const body = document.getElementById("notifBody");
+  if(!list.length){
+    body.innerHTML = `<div class="notif-empty">No hay notificaciones por ahora.</div>`;
+  } else {
+    body.innerHTML = list.map(n=>`
+      <div class="notif-item${n.provId?" clickable":""}"${n.provId?` data-prov="${escapeHtml(String(n.provId))}"`:""}>
+        ${n.imagen?`<img class="notif-img" src="${escapeHtml(n.imagen)}" alt="">`:""}
+        <div class="notif-txt">
+          <div class="notif-title">${escapeHtml(n.titulo||"")}</div>
+          <div class="notif-msg">${escapeHtml(n.mensaje||"")}</div>
+          ${n.enlace?`<a class="notif-link" href="${escapeHtml(n.enlace)}" target="_blank" rel="noopener">Ver más ›</a>`:""}
+          ${n.provId?`<a class="notif-link nolink">Ver proveedor ›</a>`:""}
+          <div class="notif-date">${n.createdAt?fmtNotifDate(n.createdAt):""}</div>
+        </div>
+      </div>`).join("");
+    body.querySelectorAll(".notif-item.clickable").forEach(el=>el.addEventListener("click", e=>{
+      if(e.target.closest("a.notif-link[href]")) return; // enlace externo: dejar navegar
+      const id = el.getAttribute("data-prov");
+      if(id){ closeOverlay("notifModal"); openModal(id); }
+    }));
+  }
+  if(markSeen){
+    try{ localStorage.setItem(NOTIF_SEEN, String(Date.now())); }catch(e){}
+    const dot=document.getElementById("bellDot"); if(dot) dot.style.display="none";
+  }
+  openOverlay("notifModal");
 }
 
 // ============================================================
@@ -136,7 +249,12 @@ function wireNav(){
 //  CATEGORÍAS
 // ============================================================
 // Categorías por defecto + personalizadas (desde el admin)
-function getAllCats(){ return CATEGORIAS.concat((SITE && Array.isArray(SITE.categorias)) ? SITE.categorias : []); }
+function getAllCats(){
+  // Si el admin ya definió categorías (incluye las base editadas), se usan esas;
+  // si no, se usan las categorías base por defecto.
+  if (SITE && Array.isArray(SITE.categorias) && SITE.categorias.length) return SITE.categorias;
+  return CATEGORIAS;
+}
 function catProviders(cat){
   if (Array.isArray(cat.ids)) { const set = cat.ids.map(String); return PROV.filter(p=>set.includes(String(p.id))); }
   return PROV.filter(p=>p.categoria===cat.nombre);
@@ -311,12 +429,15 @@ function openModal(id){
 
   const photos = (p.fotos||[]).filter(Boolean);
   const wa = provWa(p);
-  const emb = p.video ? videoEmbed(p.video) : null;
-  const videoHtml = emb
-    ? `<div class="m-video">${emb.type==="iframe"
+  // Varios videos: usa la lista p.videos; si no, cae al campo p.video (compatibilidad)
+  const vids = (Array.isArray(p.videos) && p.videos.length ? p.videos : (p.video ? [p.video] : [])).filter(Boolean);
+  const videoHtml = vids.map(v=>{
+    const emb = videoEmbed(v);
+    if(!emb) return "";
+    return `<div class="m-video">${emb.type==="iframe"
         ? `<iframe src="${escapeHtml(emb.src)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
-        : `<video src="${escapeHtml(emb.src)}" controls playsinline preload="metadata"></video>`}</div>`
-    : "";
+        : `<video src="${escapeHtml(emb.src)}" controls playsinline preload="metadata"></video>`}</div>`;
+  }).join("");
   const logoHtml = p.logo ? `<div class="pm-plogo"><img src="${escapeHtml(p.logo)}" alt="${escapeHtml(p.nombre)}"></div>` : "";
   document.getElementById("pmBody").innerHTML = `
     ${logoHtml}

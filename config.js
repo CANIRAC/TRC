@@ -19,6 +19,12 @@ export const firebaseConfig = {
 // Pon en false si quisieras trabajar solo con guardado local (sin nube).
 export const USE_FIREBASE = true;
 
+// ---- Avisos push al celular (Firebase Cloud Messaging) ----
+// Pega aquí tu "clave VAPID" (par de claves web push) de Firebase:
+// Consola → Configuración del proyecto → Cloud Messaging → "Certificados push web" → Generar par de claves.
+// Mientras esté vacía, el botón "Activar avisos" avisará que falta configurarla.
+export const VAPID_KEY = "BA9Go-OGa0kPVGgDTkNqHg2ozurVqocYDqajVg9XbFBBBthBwSJ7rXG4Bp6jmalFEbtMUfvzHkfzj20e9LIhpBQ";
+
 // ---- Acceso del administrador ----
 // El usuario escribe "canirac" y su contraseña en el panel.
 // En la nube, el sistema inicia sesión en Firebase Auth con ADMIN_EMAIL.

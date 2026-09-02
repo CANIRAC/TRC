@@ -4,7 +4,7 @@
 import { brandHTML, ICONS, CATEGORY_ICONS, waLink, escapeHtml, toast, CAMARA_WA, videoEmbed } from "./ui.js";
 import { CONTACTO, MENSAJE_PROVEEDOR } from "./config.js";
 import { CATEGORIAS } from "./seed.js";
-import { getProviders, getSite, addEquipo, googleLogin, currentUser, logout, getUserData, saveUserData } from "./store.js";
+import { getProviders, getSite, addEquipo, googleLogin, currentUser, logout, getUserData, saveUserData, enablePush, pushSupported } from "./store.js";
 
 const FAV_KEY = "canirac_favs_v1";
 const RECENT_KEY = "canirac_recent_v1";      // búsquedas recientes
@@ -254,13 +254,48 @@ function maybeAutoNotif(){
   }
 }
 function fmtNotifDate(ts){ try{ return new Date(ts).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"}); }catch(e){ return ""; } }
+
+// ---------- Activar avisos push en este celular ----------
+const PUSH_ON = "canirac_push_on_v1";
+function pushRowHtml(){
+  if(!pushSupported()) return "";
+  let on=false; try{ on = (localStorage.getItem(PUSH_ON)==="1") && (Notification.permission==="granted"); }catch(e){}
+  if(on) return `<div class="push-row on">✅ Avisos activados en este celular</div>`;
+  return `<div class="push-row">
+    <div class="push-txt"><b>Recibe los avisos en tu celular</b><small>Aunque no tengas la app abierta.</small></div>
+    <button class="push-btn" id="pushEnableBtn">Activar</button>
+  </div>`;
+}
+function wirePushRow(){
+  const b=document.getElementById("pushEnableBtn");
+  if(!b) return;
+  b.onclick=async()=>{
+    b.disabled=true; const prev=b.textContent; b.textContent="Activando…";
+    try{
+      await enablePush();
+      try{ localStorage.setItem(PUSH_ON,"1"); }catch(e){}
+      toast("¡Listo! Avisos activados en este celular");
+      openNotifs(false); // re-render para mostrar el estado activado
+    }catch(e){
+      b.disabled=false; b.textContent=prev;
+      const c=(e&&e.message)||"";
+      if(c==="permiso-denegado") toast("Debes permitir las notificaciones en tu navegador","err",4500);
+      else if(c==="falta-vapid") toast("Falta configurar la clave VAPID (ver guía)","err",4500);
+      else if(c==="sin-soporte") toast("En iPhone: agrega la app a tu inicio y ábrela desde ahí para activar","err",5500);
+      else if(c==="sin-nube") toast("Se necesita conexión con la nube","err",4000);
+      else toast("No se pudo activar. Intenta de nuevo.","err",4000);
+      console.warn("[CANIRAC] enablePush:", e);
+    }
+  };
+}
 function openNotifs(markSeen=true){
   const list = getNotifs().slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   const body = document.getElementById("notifBody");
+  const pushRow = pushRowHtml();
   if(!list.length){
-    body.innerHTML = `<div class="notif-empty">No hay notificaciones por ahora.</div>`;
+    body.innerHTML = pushRow + `<div class="notif-empty">No hay notificaciones por ahora.</div>`;
   } else {
-    body.innerHTML = list.map(n=>`
+    body.innerHTML = pushRow + list.map(n=>`
       <div class="notif-item${n.provId?" clickable":""}"${n.provId?` data-prov="${escapeHtml(String(n.provId))}"`:""}>
         ${n.imagen?`<img class="notif-img" src="${escapeHtml(n.imagen)}" alt="">`:""}
         <div class="notif-txt">
@@ -277,6 +312,7 @@ function openNotifs(markSeen=true){
       if(id){ closeOverlay("notifModal"); openModal(id); }
     }));
   }
+  wirePushRow();
   if(markSeen){
     try{ localStorage.setItem(NOTIF_SEEN, String(Date.now())); }catch(e){}
     const dot=document.getElementById("bellDot"); if(dot) dot.style.display="none";

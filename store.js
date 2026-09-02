@@ -6,7 +6,7 @@
 //  el sitio siempre funcione.
 // ============================================================
 
-import { firebaseConfig, USE_FIREBASE, ADMIN } from "./config.js";
+import { firebaseConfig, USE_FIREBASE, ADMIN, VAPID_KEY } from "./config.js";
 import { SEED_PROVEEDORES, DEFAULT_SITE } from "./seed.js";
 
 const FB_VER = "10.12.5";
@@ -17,6 +17,7 @@ const LS = {
   admin: "canirac_admin_v1"
 };
 
+let _app = null;     // instancia de la app de firebase
 let _db = null;
 let _auth = null;
 let _fs = null;      // funciones de firestore
@@ -60,6 +61,7 @@ export function init() {
         timeout
       ]);
       const app = initializeApp(firebaseConfig);
+      _app = app;
       _fs = fs;
       _authFns = authMod;
       _db = fs.getFirestore(app);
@@ -263,6 +265,58 @@ export async function saveUserData(data) {
   return false;
 }
 
+// ============================================================
+//  AVISOS PUSH (Firebase Cloud Messaging) — lado del cliente
+// ============================================================
+// ¿Este dispositivo/navegador puede recibir push?
+export function pushSupported() {
+  return (typeof window !== "undefined") &&
+         ("Notification" in window) &&
+         ("serviceWorker" in navigator) &&
+         (typeof PushManager !== "undefined");
+}
+
+// Pide permiso, obtiene el token del dispositivo y lo guarda en Firestore (pushTokens).
+// Devuelve el token si todo salió bien. Lanza un Error con un código si no.
+export async function enablePush() {
+  await init();
+  if (_mode !== "cloud") throw new Error("sin-nube");
+  if (!pushSupported()) throw new Error("sin-soporte");
+  if (!VAPID_KEY) throw new Error("falta-vapid");
+
+  const permiso = await Notification.requestPermission();
+  if (permiso !== "granted") throw new Error("permiso-denegado");
+
+  const msgMod = await import(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-messaging.js`);
+  if (msgMod.isSupported) {
+    const ok = await msgMod.isSupported().catch(() => false);
+    if (!ok) throw new Error("sin-soporte");
+  }
+  const messaging = msgMod.getMessaging(_app);
+
+  // Usa el service worker de mensajería (registrado en su propio ámbito)
+  let reg;
+  try { reg = await navigator.serviceWorker.register("firebase-messaging-sw.js"); }
+  catch (e) { reg = await navigator.serviceWorker.ready.catch(() => undefined); }
+
+  const token = await msgMod.getToken(messaging, {
+    vapidKey: VAPID_KEY,
+    serviceWorkerRegistration: reg
+  });
+  if (!token) throw new Error("sin-token");
+
+  try {
+    await _fs.setDoc(_fs.doc(_db, "pushTokens", token), {
+      token,
+      email: (currentUser() && currentUser().email) || "",
+      ua: (navigator.userAgent || "").slice(0, 140),
+      createdAt: Date.now()
+    }, { merge: true });
+  } catch (e) { console.warn("guardar token push", e); }
+
+  return token;
+}
+
 export function onAdminChange(fn) {
   _adminListeners.push(fn);
   return () => {
@@ -291,25 +345,27 @@ export async function uploadFile(file, folder = "media", onProgress) {
   const safe = (file.name || "archivo").replace(/[^\w.\-]+/g, "_").slice(-50);
   const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${safe}`;
   const sref = _storageFns.ref(_storage, path);
-  const TIMEOUT = 60000; // 60 s: si la subida se cuelga, no se queda esperando para siempre
 
   if (onProgress && _storageFns.uploadBytesResumable) {
-    // Subida con progreso (para videos): resumible + tiempo límite
+    // Subida con progreso (para videos): resumible + tiempo límite (90 s)
     const task = _storageFns.uploadBytesResumable(sref, file);
     await new Promise((res, rej) => {
       let done = false;
-      const to = setTimeout(() => { if (!done) { done = true; try { task.cancel(); } catch (e) {} rej(new Error("storage-timeout")); } }, TIMEOUT);
+      const to = setTimeout(() => { if (!done) { done = true; try { task.cancel(); } catch (e) {} rej(new Error("storage-timeout")); } }, 90000);
       task.on("state_changed",
         (s) => { try { onProgress(Math.round((s.bytesTransferred / s.totalBytes) * 100)); } catch (e) {} },
         (err) => { if (!done) { done = true; clearTimeout(to); rej(err); } },
         () => { if (!done) { done = true; clearTimeout(to); res(); } });
     });
   } else {
-    // Subida directa (para imágenes): termina o falla rápido, con tiempo límite
+    // Subida directa (para imágenes JPG pequeñas): termina o falla rápido (25 s)
     await Promise.race([
       _storageFns.uploadBytes(sref, file),
-      new Promise((_, rej) => setTimeout(() => rej(new Error("storage-timeout")), TIMEOUT))
+      new Promise((_, rej) => setTimeout(() => rej(new Error("storage-timeout")), 25000))
     ]);
   }
-  return await _storageFns.getDownloadURL(sref);
+  return await Promise.race([
+    _storageFns.getDownloadURL(sref),
+    new Promise((_, rej) => setTimeout(() => rej(new Error("storage-timeout")), 20000))
+  ]);
 }

@@ -39,6 +39,11 @@ export const ADMIN = {
   passwordLocal: ""
 };
 
+// ---- Periodo de prueba para quien se registra ----
+// Días que una persona puede usar el catálogo mientras el admin revisa su solicitud.
+// Si lo cambias, cambia también el 15 de firestore.rules (función enPrueba).
+export const PRUEBA_DIAS = 15;
+
 // ---- Datos de contacto de la Cámara (inicio, menú y contacto) ----
 export const CONTACTO = {
   instagram: "https://www.instagram.com/caniraclaguna",

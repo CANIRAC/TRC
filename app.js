@@ -1,12 +1,12 @@
 // ============================================================
 //  CANIRAC Laguna — App (Directorio de Proveedores)
 // ============================================================
-import { brandHTML, ICONS, CATEGORY_ICONS, waLink, escapeHtml, safeUrl, safeColor, toast, CAMARA_WA, videoEmbed } from "./ui.js";
-import { CONTACTO, MENSAJE_PROVEEDOR } from "./config.js";
+import { brandHTML, ICONS, CATEGORY_ICONS, waLink, escapeHtml, safeUrl, safeColor, toast, CAMARA_WA, videoEmbed, createLoader } from "./ui.js";
+import { CONTACTO, MENSAJE_PROVEEDOR, PRUEBA_DIAS } from "./config.js";
 import { CATEGORIAS } from "./seed.js";
 import {
   init as storeInit, getMode, authReady, getProviders, getSite, addEquipo, googleLogin, emailLogin, resetPassword,
-  currentUser, logout, isAdminEmail, getMyAccess, watchMyAccess, registerAccess,
+  currentUser, logout, isAdminEmail, getMyAccess, watchMyAccess, registerAccess, trialEnd, accessState,
   getUserData, saveUserData, enablePush, pushSupported, refreshPushIfEnabled
 } from "./store.js";
 
@@ -104,8 +104,10 @@ function paintStatic(){
 
 async function start(){
   showGate("checking");
+  loader.set(25, "Conectando…");
   let mode = "local";
   try{ mode = await storeInit(); }catch(e){ mode = "local"; }
+  loader.set(50, "Verificando tu sesión…");
 
   // Sin nube (sin internet o Firebase bloqueado): solo entra quien ya fue autorizado aquí.
   if(mode !== "cloud"){
@@ -114,6 +116,7 @@ async function start(){
   }
   let user = null;
   try{ user = await authReady(); }catch(e){ user = null; }
+  loader.set(65, user ? "Verificando tu acceso…" : "Casi listo…");
   await routeUser(user);
 }
 
@@ -128,15 +131,32 @@ async function routeUser(user){
     const cached = readAccessCache();
     if(cached && cached.uid===user.uid) return enterApp(user, { offline:true });
     showGate("login");
-    setMsg("loginMsg", "No se pudo verificar tu acceso. Revisa tu conexión e inténtalo de nuevo.");
+    setMsg("loginMsg", "No se pudo verificar tu acceso. Revisa tu conexión e inténtalo de nuevo." + (e && e.code ? ` [${e.code}]` : ""));
     return;
   }
   ACCESS = acc;
-  if(!acc){ showProfileForm(user); return; }
-  if(acc.estado==="aprobado") return enterApp(user);
+  const st = accessState(acc);
+  if(st==="sin-registro"){ showProfileForm(user); return; }
+  if(st==="aprobado" || st==="prueba") return enterApp(user);
   clearAccessCache();
-  if(acc.estado==="denegado"){ showGate("denied"); return; }
-  showPending(acc);
+  if(st==="denegado"){ showGate("denied"); return; }
+  showPending(acc); // prueba vencida: espera la decisión del admin
+}
+
+// ---------- Periodo de prueba ----------
+function daysLeft(acc){ return Math.max(0, Math.ceil((trialEnd(acc) - Date.now()) / 86400000)); }
+let trialTimer = null;
+function paintTrial(){
+  const bar = document.getElementById("trialBar");
+  if(!bar) return;
+  clearTimeout(trialTimer);
+  if(accessState(ACCESS)!=="prueba"){ bar.hidden = true; return; }
+  const n = daysLeft(ACCESS);
+  bar.innerHTML = `${ICONS.clock}<span><b>Periodo de prueba:</b> ${n===1?"te queda 1 día":`te quedan ${n} días`}. CANIRAC Laguna está revisando tu solicitud.</span>`;
+  bar.hidden = false;
+  // Al terminar la prueba (con la app abierta) se bloquea el catálogo.
+  const ms = trialEnd(ACCESS) - Date.now();
+  if(ms > 0 && ms < 2147000000) trialTimer = setTimeout(()=>{ if(accessState(ACCESS)==="prueba-vencida"){ clearAccessCache(); closeAllOverlays(); showPending(ACCESS); } }, ms + 1000);
 }
 
 // ============================================================
@@ -149,6 +169,7 @@ function showGate(view){
   document.body.classList.add("locked");
   gate.querySelectorAll(".gv").forEach(s=>s.classList.toggle("hidden", s.dataset.gv!==view));
   gate.scrollTop = 0;
+  if(view!=="checking") loader.done();
   const focusMap = { login:"l-email", forgot:"f-email", profile:"r-nombre" };
   if(focusMap[view] && window.matchMedia("(min-width:960px)").matches){
     setTimeout(()=>{ const el=document.getElementById(focusMap[view]); if(el && !el.value) el.focus(); }, 60);
@@ -182,9 +203,10 @@ function authError(e){
   if(/operation-not-allowed/.test(c)) return "Falta activar este método de acceso en Firebase (Authentication → Sign-in method).";
   if(/weak-password/.test(c)) return "La contraseña es muy débil.";
   if(/credential-already-in-use|email-already-in-use/.test(c)) return "Ese correo ya tiene otra cuenta. Inicia sesión con tu contraseña o recupérala.";
-  if(/permission-denied/.test(c)) return "No se pudo guardar la solicitud (permiso denegado). Si ya la enviaste antes, inicia sesión.";
+  if(/permission-denied/.test(c)) return "El servidor rechazó la solicitud (permiso denegado). Verifica que estén publicadas las reglas nuevas de Firestore. [permission-denied]";
   if(c==="sin-nube") return "Sin conexión con el servidor. Inténtalo de nuevo.";
-  return "Ocurrió un error. Inténtalo de nuevo.";
+  // El código entre corchetes ayuda a diagnosticar el problema.
+  return "Ocurrió un error. Inténtalo de nuevo." + (c ? ` [${String(c).replace(/^auth\//,"").slice(0,60)}]` : "");
 }
 
 function wireGate(){
@@ -317,8 +339,8 @@ async function submitRegistration(e){
     ACCESS = rec;
     ["r-pass","r-pass2"].forEach(id=>document.getElementById(id).value="");
     paintPwRules(); paintPwMatch();
-    showPending(rec);
-    toast("¡Solicitud enviada!");
+    toast(`¡Bienvenido! Tienes ${PRUEBA_DIAS} días de prueba 🎉`, "", 4500);
+    enterApp(currentUser());
   }catch(er){
     console.warn("[CANIRAC] registro:", er);
     setMsg("regMsg", authError(er));
@@ -332,6 +354,7 @@ function fmtDate(ts, withTime){
     return withTime ? s+" "+d.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}) : s;
   }catch(e){ return ""; }
 }
+// Prueba vencida y sin decisión del admin todavía.
 function showPending(acc){
   const row=(k,v)=>`<div><dt>${k}</dt><dd>${escapeHtml(v||"—")}</dd></div>`;
   document.getElementById("pendingSummary").innerHTML =
@@ -343,7 +366,12 @@ function showPending(acc){
   unwatchAccess = watchMyAccess(a=>{
     if(!a) return;
     ACCESS = a;
-    if(a.estado==="aprobado"){ if(unwatchAccess){ unwatchAccess(); unwatchAccess=null; } toast("¡Tu acceso fue confirmado! Bienvenido 🎉", "", 4000); enterApp(currentUser()); }
+    if(a.estado==="aprobado"){
+      if(unwatchAccess){ unwatchAccess(); unwatchAccess=null; }
+      toast("¡Tu acceso fue confirmado! Bienvenido 🎉", "", 4000);
+      if(entered){ writeAccessCache(currentUser()); hideGate(); paintTrial(); watchRevocation(currentUser()); }
+      else enterApp(currentUser());
+    }
     else if(a.estado==="denegado"){ showGate("denied"); }
   });
 }
@@ -355,8 +383,19 @@ async function doLogout(){
   location.reload();
 }
 
-function readAccessCache(){ try{ return JSON.parse(localStorage.getItem(ACCESS_KEY)); }catch(e){ return null; } }
-function writeAccessCache(u){ try{ localStorage.setItem(ACCESS_KEY, JSON.stringify({ uid:u.uid, email:u.email||"", nombre:(ACCESS&&ACCESS.nombre)||u.displayName||"", ts:Date.now() })); }catch(e){} }
+// Copia local del acceso (para abrir sin conexión). En prueba, guarda cuándo vence.
+function readAccessCache(){
+  try{
+    const c = JSON.parse(localStorage.getItem(ACCESS_KEY));
+    if(c && c.hasta && c.hasta < Date.now()) return null; // la prueba ya venció
+    return c;
+  }catch(e){ return null; }
+}
+function writeAccessCache(u){
+  if(!u) return;
+  const hasta = accessState(ACCESS)==="prueba" ? trialEnd(ACCESS) : 0;
+  try{ localStorage.setItem(ACCESS_KEY, JSON.stringify({ uid:u.uid, email:u.email||"", nombre:(ACCESS&&ACCESS.nombre)||u.displayName||"", hasta, ts:Date.now() })); }catch(e){}
+}
 function clearAccessCache(){ try{ localStorage.removeItem(ACCESS_KEY); }catch(e){} }
 
 // ============================================================
@@ -366,16 +405,18 @@ async function enterApp(user, { offline=false } = {}){
   if(entered) return;
   entered = true;
   if(user) writeAccessCache(user);
-  const loading = document.getElementById("appLoading");
-  loading.style.display = ""; loading.classList.remove("gone");
+  loader.show("Cargando proveedores…", 70);
   hideGate();
   updateSessionUI(user);
+  paintTrial();
   // Failsafe: aunque algo falle o la red tarde, nunca dejar la barra de carga atorada.
   const failsafe = setTimeout(hideLoading, 12000);
   try{
     try { PROV = await getProviders(); } catch(e){ PROV = []; }
     PROV = (PROV||[]).map(p=>Object.assign({fotos:[],descripcion:"",badge:"",promo:"",destacado:false,categoria:"Otros",color:"#1877E6",video:"",videos:[],logo:""},p));
+    loader.set(88, "Preparando categorías…");
     try { SITE = await getSite(); } catch(e){ SITE = {}; }
+    loader.set(96, "¡Listo!");
 
     safe(renderMarquee, SITE && SITE.slider);
     safe(renderCategorias);
@@ -402,23 +443,27 @@ async function enterApp(user, { offline=false } = {}){
 function watchRevocation(user){
   if(!user || isAdminEmail(user.email)) return;
   if(unwatchAccess) unwatchAccess();
+  let wasTrial = accessState(ACCESS)==="prueba";
   unwatchAccess = watchMyAccess(a=>{
-    if(a && a.estado==="aprobado"){
+    if(!a){ clearAccessCache(); closeAllOverlays(); showProfileForm(user); return; } // el admin borró su registro
+    ACCESS = a;
+    const st = accessState(a);
+    if(st==="aprobado" || st==="prueba"){
+      if(st==="aprobado" && wasTrial) toast("¡Tu acceso fue confirmado! Ya es permanente 🎉", "", 4500);
+      wasTrial = st==="prueba";
+      writeAccessCache(user); paintTrial();
       // Si se le había retirado y el admin lo vuelve a confirmar, se abre de nuevo.
-      if(document.body.classList.contains("locked")){ ACCESS = a; writeAccessCache(user); hideGate(); }
+      if(document.body.classList.contains("locked")) hideGate();
       return;
     }
     clearAccessCache();
     closeAllOverlays();
-    showGate(a && a.estado==="pendiente" ? "pending" : "denied");
+    if(st==="prueba-vencida") showPending(a); else showGate("denied");
   });
 }
 // Ejecuta una función de render sin que un error tumbe el resto del catálogo.
 function safe(fn, ...args){ try{ return fn(...args); }catch(e){ console.error("[CANIRAC] Error en "+((fn&&fn.name)||"render")+":", e); } }
-function hideLoading(){
-  const el = document.getElementById("appLoading");
-  if(el){ el.classList.add("gone"); setTimeout(()=>{ el.style.display="none"; }, 400); }
-}
+function hideLoading(){ loader.done("¡Listo!"); }
 
 // ---------- Sesión (menú lateral + encabezado) ----------
 async function syncUser(){
@@ -1015,5 +1060,6 @@ function shade(hex, amt){
 // Exponer el modo actual para diagnóstico desde la consola
 window.caniracMode = () => getMode();
 
+const loader = createLoader();
 paintStatic();
 start();

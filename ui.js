@@ -124,6 +124,60 @@ export function toast(msg, type = "", ms = 3000) {
   t._h = setTimeout(() => t.classList.remove("show"), ms);
 }
 
+// Pantalla de carga con logo y barra de porcentaje (#appLoading).
+// set(p, texto) avanza hasta p%; entre pasos sigue avanzando despacio para
+// que nunca parezca detenida. done() llega a 100% y se desvanece.
+export function createLoader() {
+  const el = document.getElementById("appLoading");
+  const fill = document.getElementById("ldFill"), pct = document.getElementById("ldPct"), txt = document.getElementById("ldText");
+  if (!el) return { set() {}, show() {}, done() { return Promise.resolve(); } };
+  let cur = 5, target = 5, timer = null, finishing = null, gen = 0;
+  const paint = () => {
+    const v = Math.min(100, Math.round(cur));
+    fill.style.width = cur + "%"; pct.textContent = v + "%"; el.setAttribute("aria-valuenow", v);
+  };
+  const run = () => {
+    if (timer) return;
+    timer = setInterval(() => {
+      if (cur < target) cur = Math.min(target, cur + Math.max(0.7, (target - cur) * 0.2));
+      else if (cur < Math.min(target + 9, 96)) cur += 0.06;
+      paint();
+    }, 40);
+  };
+  run(); paint();
+  return {
+    set(p, text) { target = Math.max(target, p); if (text) txt.textContent = text; run(); },
+    show(text, p = 5) {
+      // Si ya está a la vista (carga inicial), solo avanza.
+      if (!finishing && el.style.display !== "none" && !el.classList.contains("gone")) { this.set(p, text); return; }
+      finishing = null; gen++;
+      el.style.display = ""; el.classList.remove("gone");
+      cur = target = p; if (text) txt.textContent = text; paint(); run();
+    },
+    done(text) {
+      if (finishing) return finishing;
+      if (text) txt.textContent = text;
+      const g = gen;
+      finishing = new Promise(res => {
+        clearInterval(timer); timer = null;
+        const t = setInterval(() => {
+          if (g !== gen) { clearInterval(t); return res(); } // se volvió a mostrar
+          cur = Math.min(100, cur + Math.max(2, (100 - cur) * 0.3)); paint();
+          if (cur >= 100) {
+            clearInterval(t);
+            setTimeout(() => {
+              if (g !== gen) return res();
+              el.classList.add("gone");
+              setTimeout(() => { if (g === gen) el.style.display = "none"; res(); }, 380);
+            }, 180);
+          }
+        }, 30);
+      });
+      return finishing;
+    }
+  };
+}
+
 // Convierte URL de YouTube a embed; deja pasar mp4/otros
 export function videoEmbed(url) {
   if (!url) return null;

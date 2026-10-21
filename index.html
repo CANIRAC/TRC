@@ -30,6 +30,7 @@
       <li><span data-ic="wa"></span>Contacto directo por WhatsApp</li>
     </ul>
     <div class="splash-social" id="gateSocial"></div>
+    <button type="button" class="gate-install" data-pwa-install>📲 Cómo instalar la app</button>
   </div>
 
   <div class="gate-main">
@@ -68,7 +69,7 @@
         <ol class="steps">
           <li><b>Verifica tu correo de Google.</b> Así sabemos que es un correo real.</li>
           <li><b>Completa tus datos</b> y crea una contraseña para esta plataforma.</li>
-          <li><b>CANIRAC Laguna autoriza tu acceso.</b> Después entras con tu correo y contraseña.</li>
+          <li><b>Entras de inmediato con 15 días de prueba</b> mientras CANIRAC Laguna autoriza tu acceso. Después entras con tu correo y contraseña.</li>
         </ol>
         <div class="form-msg" id="regStartMsg"></div>
         <button type="button" class="gbtn" id="googleRegBtn"><span class="gic" data-g></span>Registrarme con Google</button>
@@ -113,8 +114,8 @@
       <section class="gv hidden" data-gv="pending">
         <div class="gv-center">
           <div class="gv-icon wait" data-ic="clock"></div>
-          <h2>Solicitud en revisión</h2>
-          <p class="gv-sub">Recibimos tus datos. En cuanto CANIRAC Laguna confirme tu acceso, esta pantalla se abrirá sola y podrás entrar con tu correo y contraseña.</p>
+          <h2>Terminó tu periodo de prueba</h2>
+          <p class="gv-sub">Tus 15 días de prueba terminaron y tu solicitud sigue en revisión. En cuanto CANIRAC Laguna confirme tu acceso, esta pantalla se abrirá sola y podrás seguir entrando con tu correo y contraseña.</p>
         </div>
         <dl class="acc-summary" id="pendingSummary"></dl>
         <a class="btn-wa" id="pendingWa" target="_blank" rel="noopener"></a>
@@ -158,13 +159,12 @@
   </div>
 </div>
 
-<!-- ===== Barra de carga ===== -->
-<div class="app-loading gone" id="appLoading" style="display:none">
-  <div class="loader-bar"><span></span></div>
-  <div class="loader-box">
-    <div class="spinner"></div>
-    <p>Cargando catálogo…</p>
-    <small>Un momento, por favor</small>
+<!-- ===== Pantalla de carga (logo + porcentaje) ===== -->
+<div class="app-loading" id="appLoading" role="progressbar" aria-label="Cargando" aria-valuemin="0" aria-valuemax="100" aria-valuenow="5">
+  <div class="ld-box">
+    <div class="ld-logo"><img src="logo.png" alt="CANIRAC Laguna"></div>
+    <div class="ld-bar"><span id="ldFill"></span></div>
+    <div class="ld-row"><span id="ldText">Cargando…</span><b id="ldPct">5%</b></div>
   </div>
 </div>
 
@@ -183,7 +183,7 @@
     <a data-nav="promociones" data-ic="tag">Promociones</a>
     <a data-nav="favoritos" data-ic="heart">Favoritos</a>
     <a data-nav="contacto" data-ic="phone">Contacto</a>
-    <a data-pwa-install hidden data-ic="download">Instalar app</a>
+    <a data-pwa-install data-ic="download">Cómo instalar la app</a>
   </nav>
   <hr>
   <div class="rs-title">Redes sociales</div>
@@ -211,6 +211,7 @@
       </div>
     </div>
   </header>
+  <div class="trial-bar" id="trialBar" hidden></div>
 
   <!-- Vista INICIO -->
   <main class="content view" id="view-inicio">

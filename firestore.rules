@@ -7,12 +7,28 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.email == "canirac@caniraclaguna.mx";
     }
 
-    // Usuario del catálogo cuya solicitud fue CONFIRMADA en el panel
-    // ("Autorizaciones de acceso").
-    function aprobado() {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/accesos/$(request.auth.uid))
-        && get(/databases/$(database)/documents/accesos/$(request.auth.uid)).data.estado == "aprobado";
+    // Solicitud pendiente dentro de los 15 días de prueba.
+    // (inicioPrueba lo pone el SERVIDOR; las solicitudes anteriores usan createdAt.)
+    function enPrueba(d) {
+      return d.estado == "pendiente" && (
+        ("inicioPrueba" in d && request.time < d.inicioPrueba + duration.value(15, "d"))
+        || (!("inicioPrueba" in d) && d.createdAt is number
+            && request.time.toMillis() < d.createdAt + 15 * 86400000)
+      );
+    }
+
+    // Puede ver el catálogo: acceso CONFIRMADO en el panel ("Autorizaciones de
+    // acceso") o periodo de prueba vigente mientras el admin decide.
+    function tieneAcceso() {
+      let ruta = /databases/$(database)/documents/accesos/$(request.auth.uid);
+      return request.auth != null && exists(ruta)
+        && (get(ruta).data.estado == "aprobado" || enPrueba(get(ruta).data));
+    }
+
+    // Correo real: verificado, o cuenta vinculada a Google.
+    function correoVerificado() {
+      return request.auth.token.email_verified == true
+        || "google.com" in request.auth.token.firebase.identities;
     }
 
     function texto(v, min, max) {
@@ -20,25 +36,26 @@ service cloud.firestore {
     }
 
     // Contenido del catálogo: proveedores y configuración del inicio.
-    // Solo lo LEEN las personas autorizadas (y el admin). Solo el admin ESCRIBE.
+    // Lo LEEN las personas autorizadas o en prueba (y el admin). Solo el admin ESCRIBE.
     match /content/{doc} {
-      allow read: if esAdmin() || aprobado();
+      allow read: if esAdmin() || tieneAcceso();
       allow write: if esAdmin();
     }
 
     // Solicitudes de acceso al catálogo (una por cuenta, id = uid).
     // - La persona crea SU solicitud, siempre como "pendiente", con su correo
-    //   de Google verificado. No puede cambiarla ni aprobarse a sí misma.
+    //   de Google. No puede cambiarla, aprobarse ni alargar su prueba.
     // - Solo el administrador la confirma, la deniega o la elimina.
     match /accesos/{uid} {
       allow read: if esAdmin() || (request.auth != null && request.auth.uid == uid);
       allow create: if request.auth != null
         && request.auth.uid == uid
-        && request.auth.token.email_verified == true
-        && request.resource.data.keys().hasOnly(["uid", "email", "nombre", "fechaNacimiento", "restaurante", "puesto", "foto", "estado", "createdAt"])
+        && correoVerificado()
+        && request.resource.data.keys().hasOnly(["uid", "email", "nombre", "fechaNacimiento", "restaurante", "puesto", "foto", "estado", "createdAt", "inicioPrueba"])
         && request.resource.data.uid == uid
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.estado == "pendiente"
+        && request.resource.data.inicioPrueba == request.time
         && texto(request.resource.data.nombre, 3, 120)
         && texto(request.resource.data.fechaNacimiento, 10, 10)
         && texto(request.resource.data.restaurante, 2, 120)
@@ -71,6 +88,12 @@ service cloud.firestore {
     match /pushTokens/{token} {
       allow create, update: if request.auth != null && request.resource.data.token == token;
       allow read, delete: if esAdmin();
+    }
+
+    // Dispositivos del ADMINISTRADOR que reciben el aviso de cada solicitud de
+    // acceso nueva (los usa la Cloud Function "avisoSolicitudAcceso").
+    match /adminTokens/{token} {
+      allow read, write: if esAdmin();
     }
   }
 }

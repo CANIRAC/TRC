@@ -6,7 +6,7 @@
 //  el sitio siempre funcione.
 // ============================================================
 
-import { firebaseConfig, USE_FIREBASE, ADMIN, VAPID_KEY } from "./config.js";
+import { firebaseConfig, USE_FIREBASE, ADMIN, VAPID_KEY, PRUEBA_DIAS } from "./config.js";
 import { SEED_PROVEEDORES, DEFAULT_SITE } from "./seed.js";
 
 const FB_VER = "10.12.5";
@@ -315,13 +315,17 @@ async function setPlatformPassword(user, password, retried) {
   }
 }
 
-// Envía la solicitud de acceso (queda "pendiente" hasta que el admin decida).
+// Envía la solicitud de acceso. Queda "pendiente" hasta que el admin decida y,
+// mientras tanto, la persona tiene PRUEBA_DIAS días de prueba (los cuenta el
+// servidor con inicioPrueba = hora del servidor, así nadie puede alargarla).
 export async function registerAccess(data) {
   await init();
   if (_mode !== "cloud") throw new Error("sin-nube");
   const u = currentUser();
   if (!u || !u.email) throw new Error("sin-sesion");
   await setPlatformPassword(u, data.password);
+  // Token nuevo: así las reglas ven la cuenta ya vinculada (Google + contraseña).
+  try { await u.getIdToken(true); } catch (e) {}
   const rec = {
     uid: u.uid,
     email: u.email,
@@ -331,10 +335,28 @@ export async function registerAccess(data) {
     puesto: data.puesto,
     foto: u.photoURL || "",
     estado: "pendiente",
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    inicioPrueba: _fs.serverTimestamp()
   };
   await _fs.setDoc(_fs.doc(_db, ACC, u.uid), rec);
-  return rec;
+  return Object.assign({}, rec, { inicioPrueba: Date.now() });
+}
+
+// Fin del periodo de prueba (milisegundos) de una solicitud, o 0 si no aplica.
+export function trialEnd(acc) {
+  if (!acc) return 0;
+  const ip = acc.inicioPrueba;
+  const start = (ip && typeof ip.toMillis === "function") ? ip.toMillis()
+    : (typeof ip === "number") ? ip
+    : (typeof acc.createdAt === "number") ? acc.createdAt : 0;
+  return start ? start + PRUEBA_DIAS * 86400000 : 0;
+}
+// ¿Puede entrar al catálogo? (confirmado, o pendiente con prueba vigente)
+export function accessState(acc, now = Date.now()) {
+  if (!acc) return "sin-registro";
+  if (acc.estado === "aprobado") return "aprobado";
+  if (acc.estado === "denegado") return "denegado";
+  return trialEnd(acc) > now ? "prueba" : "prueba-vencida";
 }
 export async function getMyAccess() {
   await init();
@@ -424,7 +446,9 @@ export function pushSupported() {
 
 // Núcleo del registro de push. interactive=true pide permiso (botón "Activar");
 // interactive=false solo actúa si YA hay permiso (auto-reparación al abrir la app).
-async function _registerPush(interactive) {
+// col: "pushTokens" (usuarios del catálogo) o "adminTokens" (dispositivos del admin,
+// que reciben el aviso de cada solicitud de acceso nueva).
+async function _registerPush(interactive, col = "pushTokens") {
   await init();
   if (_mode !== "cloud") { if (interactive) throw new Error("sin-nube"); return null; }
   if (!pushSupported()) { if (interactive) throw new Error("sin-soporte"); return null; }
@@ -461,7 +485,7 @@ async function _registerPush(interactive) {
 
   // Guardar/actualizar el token. En modo interactivo, si falla, avisamos (throw).
   try {
-    await _fs.setDoc(_fs.doc(_db, "pushTokens", token), {
+    await _fs.setDoc(_fs.doc(_db, col, token), {
       token,
       email: (currentUser() && currentUser().email) || "",
       ua: (navigator.userAgent || "").slice(0, 140),
@@ -480,7 +504,7 @@ async function _registerPush(interactive) {
               body: d.body || "",
               icon: d.icon || "icon-192.png",
               data: { url: d.link || d.url || "index.html" },
-              tag: "canirac-aviso"
+              tag: d.tag || "canirac-aviso"
             });
           }
         } catch (e) {}
@@ -498,6 +522,13 @@ export async function enablePush() { return _registerPush(true); }
 export async function refreshPushIfEnabled() {
   try { return await _registerPush(false); }
   catch (e) { console.warn("refreshPush", e); return null; }
+}
+
+// Panel admin: avisos de solicitudes de acceso en este dispositivo.
+export async function enableAdminPush() { return _registerPush(true, "adminTokens"); }
+export async function refreshAdminPushIfEnabled() {
+  try { return await _registerPush(false, "adminTokens"); }
+  catch (e) { console.warn("refreshAdminPush", e); return null; }
 }
 
 export function onAdminChange(fn) {

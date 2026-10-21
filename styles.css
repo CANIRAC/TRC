@@ -112,7 +112,7 @@ h1,h2,h3,h4{font-family:var(--f-head);color:var(--navy);margin:0;line-height:1.1
 .cat .tile{width:100%;aspect-ratio:1;background:#fff;border:1.5px solid var(--line);border-radius:16px;display:flex;align-items:center;justify-content:center;color:var(--primary);box-shadow:var(--shadow-sm);transition:transform .18s, box-shadow .2s, border-color .2s}
 .cat .tile svg{width:34px;height:34px}
 .cat:hover .tile{transform:translateY(-4px);box-shadow:var(--shadow);border-color:transparent}
-.cat .lbl{font-size:.8rem;font-weight:600;color:var(--ink);line-height:1.15;overflow-wrap:anywhere;hyphens:auto}
+.cat .lbl{font-size:clamp(.7rem,3.1vw,.8rem);font-weight:600;color:var(--ink);line-height:1.15;overflow-wrap:break-word;-webkit-hyphens:auto;hyphens:auto}
 .cat .cnt{font-size:.72rem;color:var(--muted)}
 
 /* Vista categorías (todas) */
@@ -297,7 +297,7 @@ h1,h2,h3,h4{font-family:var(--f-head);color:var(--navy);margin:0;line-height:1.1
 
 @media(max-width:380px){
   .cat-grid{gap:.6rem}
-  .cat .lbl{font-size:.74rem}
+  .cat .lbl{font-size:.7rem}
   .hero-title h1{font-size:2rem}
 }
 
@@ -419,14 +419,16 @@ h1,h2,h3,h4{font-family:var(--f-head);color:var(--navy);margin:0;line-height:1.1
 
 
 /* ---------- Barra de carga al entrar ---------- */
-.app-loading{position:fixed;inset:0;z-index:150;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.3rem;transition:opacity .4s ease}
+.app-loading{position:fixed;inset:0;z-index:250;background:var(--grad);display:flex;align-items:center;justify-content:center;padding:1.5rem;transition:opacity .38s ease}
 .app-loading.gone{opacity:0;pointer-events:none}
-.app-loading .loader-bar{position:absolute;top:0;left:0;right:0;height:4px;background:var(--soft-2);overflow:hidden}
-.app-loading .loader-bar span{position:absolute;left:-40%;width:40%;height:100%;background:var(--primary);border-radius:4px;animation:loadbar 1.1s ease-in-out infinite}
-@keyframes loadbar{0%{left:-40%}50%{left:30%}100%{left:100%}}
-.app-loading .loader-box{display:flex;flex-direction:column;align-items:center;gap:.4rem}
-.app-loading p{font-family:var(--f-head);font-weight:600;color:var(--navy);margin:.4rem 0 0}
-.app-loading small{color:var(--muted)}
+.ld-box{width:min(320px,80vw);display:flex;flex-direction:column;align-items:center;gap:1.1rem;animation:splashUp .5s ease}
+.ld-logo{background:#fff;border-radius:22px;padding:1rem 1.3rem;box-shadow:0 18px 40px rgba(0,0,0,.2);animation:ldPulse 1.8s ease-in-out infinite}
+.ld-logo img{height:84px;width:auto;max-width:220px;object-fit:contain}
+@keyframes ldPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+.ld-bar{width:100%;height:10px;border-radius:10px;background:rgba(255,255,255,.25);overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,.12)}
+.ld-bar span{display:block;height:100%;width:5%;border-radius:10px;background:linear-gradient(90deg,#fff,#d9ecff);box-shadow:0 0 12px rgba(255,255,255,.7);transition:width .12s linear}
+.ld-row{width:100%;display:flex;justify-content:space-between;align-items:center;color:rgba(255,255,255,.92);font-size:.9rem;font-weight:500}
+.ld-row b{font-family:var(--f-head);font-size:1.15rem;color:#fff;font-variant-numeric:tabular-nums}
 
 /* ---------- Punto de la campana ---------- */
 .bell-dot{position:absolute;top:7px;right:7px;width:12px;height:12px;border-radius:50%;background:#ff3b30;border:2px solid var(--primary);box-shadow:0 0 0 0 rgba(255,59,48,.6);animation:bellpulse 1.6s ease-out infinite}
@@ -683,3 +685,35 @@ a.notif-link.nolink{cursor:pointer}
   .atabs{margin:0 -.8rem 1rem;padding:0 .8rem}
   .editor{width:100%}
 }
+
+
+/* ============================================================
+   PERIODO DE PRUEBA (barra bajo el encabezado)
+   ============================================================ */
+.trial-bar{display:flex;align-items:center;gap:.6rem;max-width:var(--appw);margin:.9rem auto 0;padding:.7rem 1rem;background:#fff6e5;border:1px solid #fde2b0;color:#7a4d00;border-radius:14px;font-size:.86rem;line-height:1.35;width:calc(100% - 2.2rem)}
+.trial-bar svg{width:20px;height:20px;flex:0 0 auto;color:#d48806}
+.trial-bar b{color:#5c3a00}
+@media (min-width:960px){ .trial-bar{width:calc(100% - 3rem);margin-top:1.2rem;font-size:.92rem} }
+.acc-trial{display:inline-flex;align-items:center;gap:.35em;font-size:.76rem;font-weight:700;color:#a86400;background:#fff6e5;border-radius:999px;padding:.25em .7em}
+.acc-trial.vencida{color:#c0392b;background:#fdecec}
+.acc-trial svg{width:14px;height:14px}
+
+/* ============================================================
+   MINI TUTORIAL: CÓMO INSTALAR LA APP
+   ============================================================ */
+.gate-install{margin-top:1.1rem;background:rgba(255,255,255,.14);border:1.5px solid rgba(255,255,255,.45);color:#fff;font-weight:600;font-size:.9rem;padding:.6em 1.2em;border-radius:999px}
+.gate-install:hover{background:rgba(255,255,255,.24)}
+.inst-modal{z-index:320}
+.inst-tabs{display:flex;gap:.4rem;background:var(--soft);padding:.3rem;border-radius:12px;margin-bottom:1.1rem}
+.inst-tab{flex:1;padding:.6em .4em;border-radius:9px;font-weight:600;font-size:.86rem;color:var(--muted)}
+.inst-tab.active{background:#fff;color:var(--primary);box-shadow:var(--shadow-sm)}
+.inst-steps{list-style:none;counter-reset:is;padding:0;margin:0;display:grid;gap:.85rem}
+.inst-steps li{counter-increment:is;display:flex;gap:.8rem;align-items:flex-start;font-size:.94rem;color:var(--text);line-height:1.45}
+.inst-steps li::before{content:counter(is);flex:0 0 auto;width:1.9rem;height:1.9rem;border-radius:50%;background:var(--primary);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:.88rem}
+.inst-steps b{color:var(--navy)}
+.inst-ic{display:inline-flex;align-items:center;justify-content:center;width:1.6em;height:1.6em;border-radius:6px;background:var(--soft-2);color:var(--primary);vertical-align:-.45em;margin:0 .1em}
+.inst-ic svg{width:1em;height:1em}
+.inst-note{margin-top:1.1rem;background:var(--soft);border-radius:12px;padding:.75rem .9rem;font-size:.84rem;color:var(--muted)}
+.inst-done{text-align:center;padding:.6rem 0 .2rem;color:#0a7d33;font-weight:600}
+.inst-now{margin-top:1.1rem}
+.login-card .link-btn.center{margin-top:.6rem}

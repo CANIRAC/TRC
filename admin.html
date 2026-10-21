@@ -18,6 +18,15 @@
 </head>
 <body class="admin-page">
 
+<!-- Pantalla de carga (logo + porcentaje) -->
+<div class="app-loading" id="appLoading" role="progressbar" aria-label="Cargando" aria-valuemin="0" aria-valuemax="100" aria-valuenow="5">
+  <div class="ld-box">
+    <div class="ld-logo"><img src="logo.png" alt="CANIRAC Laguna"></div>
+    <div class="ld-bar"><span id="ldFill"></span></div>
+    <div class="ld-row"><span id="ldText">Cargando panel…</span><b id="ldPct">5%</b></div>
+  </div>
+</div>
+
 <!-- LOGIN -->
 <div class="login-wrap" id="loginView">
   <div class="login-card">
@@ -31,7 +40,8 @@
       <div class="field"><label for="pass">Contraseña</label><input id="pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
       <button class="btn-primary" id="loginBtn" type="submit">Entrar</button>
     </form>
-    <p style="text-align:center;margin-top:1rem"><a href="index.html" style="color:var(--primary);font-weight:600;font-size:.9rem">‹ Volver al sitio</a></p>
+    <button type="button" class="link-btn center" data-pwa-install>📲 Cómo instalar el panel como app</button>
+    <p style="text-align:center;margin-top:.6rem"><a href="index.html" style="color:var(--primary);font-weight:600;font-size:.9rem">‹ Volver al sitio</a></p>
   </div>
 </div>
 
@@ -42,7 +52,7 @@
       <div id="adminBrand"></div>
       <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
         <span class="pill" id="modePill"></span>
-        <button class="btn-w ghost" data-pwa-install hidden>Instalar app</button>
+        <button class="btn-w ghost" data-pwa-install>📲 Instalar app</button>
         <a class="btn-w ghost" href="index.html" target="_blank" rel="noopener">Ver sitio ↗</a>
         <button class="btn-w" id="logoutBtn">Salir</button>
       </div>
@@ -63,7 +73,11 @@
 
     <!-- AUTORIZACIONES DE ACCESO -->
     <section class="apanel" id="p-accesos">
-      <div class="hint">Aquí aparecen todas las personas que se registran para entrar al catálogo. <b>Confirmar acceso</b> habilita su correo y contraseña de forma permanente. <b>Denegar acceso</b> les impide entrar. Puedes cambiar la decisión cuando quieras: el cambio se aplica al instante, incluso si la persona tiene el catálogo abierto.</div>
+      <div class="hint">Aquí aparecen todas las personas que se registran para entrar al catálogo. Al registrarse tienen <b>15 días de prueba</b> para usarlo mientras decides. <b>Confirmar acceso</b> habilita su correo y contraseña de forma permanente. <b>Denegar acceso</b> les impide entrar (aunque estén en prueba). Puedes cambiar la decisión cuando quieras: el cambio se aplica al instante, incluso si la persona tiene el catálogo abierto.</div>
+      <div class="push-row" id="admPushRow">
+        <div class="push-txt"><b>Avisos de solicitudes nuevas</b><small id="admPushTxt">Recibe una notificación en este dispositivo cada vez que alguien solicite acceso, aunque el panel esté cerrado.</small></div>
+        <button class="push-btn" id="admPushBtn">Activar</button>
+      </div>
       <div class="acc-filters" id="accFilters">
         <button class="acc-f active" data-f="pendiente">Pendientes <b id="accN-pendiente">0</b></button>
         <button class="acc-f" data-f="aprobado">Confirmados <b id="accN-aprobado">0</b></button>
@@ -285,7 +299,7 @@
 </aside>
 
 <script type="module">
-import { brandHTML, ICONS, CATEGORY_ICONS, escapeHtml, safeUrl, toast } from "./ui.js";
+import { brandHTML, ICONS, CATEGORY_ICONS, escapeHtml, safeUrl, toast, createLoader } from "./ui.js";
 import { ADMIN } from "./config.js";
 import { CATEGORIAS } from "./seed.js";
 import * as store from "./store.js";
@@ -298,17 +312,21 @@ fillCatSelect(CATEGORIAS);
 let PROV=[], EQ=[], SITE=null, ACCS=[];
 let provLoaded=false, siteLoaded=false, adminShown=false;
 
+const loader = createLoader();
 (async ()=>{
+  loader.set(30, "Conectando…");
   // Instancia propia ("admin"): la sesión del panel no se mezcla con la del catálogo.
   await store.init("admin");
+  loader.set(55, "Verificando sesión…");
   const pill=document.getElementById("modePill");
   if(store.getMode()==="cloud"){ pill.textContent="● Nube"; pill.className="pill cloud"; }
   else { pill.textContent="● Local"; pill.className="pill local"; }
   store.onAdminChange(v=>{ if(v) showAdmin(); });
   await store.authReady();
   if(store.isAdmin()) showAdmin();
-  else { document.getElementById("loginChecking").classList.add("hidden"); document.getElementById("loginForm").classList.remove("hidden"); }
+  else { document.getElementById("loginChecking").classList.add("hidden"); document.getElementById("loginForm").classList.remove("hidden"); loader.done(); }
 })();
+setTimeout(()=>loader.done(), 15000); // nunca dejar la carga atorada
 
 // Login
 document.getElementById("loginForm").addEventListener("submit", async e=>{
@@ -335,9 +353,52 @@ async function showAdmin(){
   adminShown = true;
   document.getElementById("loginView").classList.add("hidden");
   document.getElementById("adminView").classList.remove("hidden");
+  loader.show("Cargando proveedores…", 70);
   await loadProv();
+  loader.set(88, "Cargando solicitudes…");
   await Promise.all([loadEq(), loadSite()]);
   watchAccesos();
+  paintAdminPush();
+  if(store.getMode()==="cloud") store.refreshAdminPushIfEnabled();
+  loader.done("¡Listo!");
+}
+
+// ---------- Avisos de solicitudes nuevas en este dispositivo ----------
+const ADM_PUSH = "canirac_admin_push_v1";
+function admPushOn(){ try{ return localStorage.getItem(ADM_PUSH)==="1" && Notification.permission==="granted"; }catch(e){ return false; } }
+function paintAdminPush(){
+  const row=document.getElementById("admPushRow");
+  if(!store.pushSupported()){ row.hidden=true; return; }
+  if(admPushOn()){
+    row.classList.add("on");
+    row.innerHTML="✅ Avisos de solicitudes activados en este dispositivo";
+  }
+}
+document.getElementById("admPushBtn").onclick=async e=>{
+  const b=e.currentTarget; b.disabled=true; b.textContent="Activando…";
+  try{
+    await store.enableAdminPush();
+    try{ localStorage.setItem(ADM_PUSH,"1"); }catch(er){}
+    toast("¡Listo! Te avisaremos de cada solicitud nueva");
+    paintAdminPush();
+  }catch(er){
+    b.disabled=false; b.textContent="Activar";
+    const c=(er&&er.message)||"";
+    if(c==="permiso-denegado") toast("Permite las notificaciones en tu navegador","err",4500);
+    else if(c==="sin-soporte") toast("En iPhone: instala el panel (botón 📲) y ábrelo desde el ícono","err",5500);
+    else toast("No se pudo activar ("+((er&&er.code)||c||"error")+")","err",5000);
+    console.warn(er);
+  }
+};
+// Aviso del sistema cuando llega una solicitud con el panel abierto en otra pestaña
+// (si no activaste los avisos push, que ya lo hacen por su cuenta).
+async function systemNotify(r){
+  try{
+    if(admPushOn() || !("Notification" in window) || Notification.permission!=="granted" || !document.hidden) return;
+    const reg = await navigator.serviceWorker.getRegistration();
+    const opts={ body:`${r.nombre||r.email} · ${r.restaurante||""}`, icon:"icon-192.png", tag:"acceso-"+r.id };
+    if(reg) reg.showNotification("Nueva solicitud de acceso", opts); else new Notification("Nueva solicitud de acceso", opts);
+  }catch(e){}
 }
 
 // Tabs
@@ -362,7 +423,7 @@ async function watchAccesos(){
     await store.watchAccessRequests(list=>{
       // Aviso cuando llega una solicitud nueva mientras el panel está abierto
       if(!accFirst){
-        list.filter(r=>r.estado==="pendiente" && !accKnown.has(r.id)).forEach(r=>toast("Nueva solicitud de acceso: "+(r.nombre||r.email), "", 4500));
+        list.filter(r=>r.estado==="pendiente" && !accKnown.has(r.id)).forEach(r=>{ toast("Nueva solicitud de acceso: "+(r.nombre||r.email), "", 4500); systemNotify(r); });
       }
       accFirst=false; accKnown=new Set(list.map(r=>r.id));
       ACCS=list; renderAccesos();
@@ -402,7 +463,13 @@ function renderAccesos(){
   }
   box.innerHTML=list.map(r=>{
     const foto=safeUrl(r.foto);
-    const decided = r.decididoAt ? `<small class="acc-dec">${r.estado==="aprobado"?"Confirmado":"Denegado"} el ${fdate(r.decididoAt)}</small>` : `<small class="acc-dec">Esperando tu decisión</small>`;
+    let decided = r.decididoAt ? `<small class="acc-dec">${r.estado==="aprobado"?"Confirmado":"Denegado"} el ${fdate(r.decididoAt)}</small>` : `<small class="acc-dec">Esperando tu decisión</small>`;
+    if(r.estado==="pendiente"){
+      const st=store.accessState(r), left=Math.max(0,Math.ceil((store.trialEnd(r)-Date.now())/86400000));
+      decided = st==="prueba"
+        ? `<span class="acc-trial">${ICONS.clock} En prueba · ${left===1?"queda 1 día":`quedan ${left} días`}</span>`
+        : `<span class="acc-trial vencida">${ICONS.clock} Prueba vencida · sin acceso</span>`;
+    }
     return `<article class="acc-card st-${escapeHtml(r.estado)}">
       <div class="acc-head">
         <span class="acc-av">${foto?`<img src="${escapeHtml(foto)}" alt="" referrerpolicy="no-referrer">`:escapeHtml(initialsOf(r.nombre||r.email))}</span>

@@ -2,10 +2,11 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>CANIRAC Laguna — Catálogo de Proveedores</title>
 <meta name="description" content="Catálogo de proveedores de CANIRAC Laguna. Encuentra los mejores proveedores para tu restaurante.">
 <meta name="theme-color" content="#1877E6">
+<meta name="format-detection" content="telephone=no">
 <link rel="icon" href="logoapp.png" type="image/png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -17,26 +18,148 @@
 </head>
 <body>
 
-<!-- ===== Portada de bienvenida / Acceso ===== -->
-<div class="splash" id="splash">
-  <div class="splash-inner">
-    <div id="splashBrand"></div>
-    <p class="splash-tag">Catálogo de Proveedores</p>
-    <p class="splash-sub">Los mejores proveedores para tu restaurante, en La Laguna.</p>
-    <div class="splash-auth">
-      <button class="gbtn" id="googleBtn">
-        <span class="gic" aria-hidden="true"><svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span>
-        Continuar con Google
-      </button>
-      <button class="guestbtn" id="guestBtn">Entrar como invitado</button>
-      <p class="splash-note" id="authNote"></p>
+<!-- ===== Acceso al catálogo (inicio de sesión / registro / estado) ===== -->
+<div class="gate" id="gate">
+  <div class="gate-side">
+    <div id="gateBrand"></div>
+    <p class="gate-tag">Catálogo de Proveedores</p>
+    <p class="gate-sub">Los mejores proveedores para tu restaurante, en La Laguna.</p>
+    <ul class="gate-points">
+      <li><span data-ic="shield"></span>Proveedores confiables y verificados</li>
+      <li><span data-ic="star"></span>Promociones exclusivas para socios</li>
+      <li><span data-ic="wa"></span>Contacto directo por WhatsApp</li>
+    </ul>
+    <div class="splash-social" id="gateSocial"></div>
+  </div>
+
+  <div class="gate-main">
+    <div class="gate-card">
+
+      <!-- Verificando -->
+      <section class="gv" data-gv="checking">
+        <div class="gv-center">
+          <div class="spinner" style="margin:1rem auto"></div>
+          <p class="gv-sub">Verificando tu acceso…</p>
+        </div>
+      </section>
+
+      <!-- Iniciar sesión -->
+      <section class="gv hidden" data-gv="login">
+        <h2>Iniciar sesión</h2>
+        <p class="gv-sub">Entra con tu correo y la contraseña que creaste al registrarte.</p>
+        <div class="form-msg" id="loginMsg"></div>
+        <form id="loginForm" novalidate>
+          <div class="field"><label for="l-email">Correo</label><input id="l-email" type="email" inputmode="email" autocomplete="username" placeholder="tucorreo@gmail.com"></div>
+          <div class="field"><label for="l-pass">Contraseña</label>
+            <div class="pw"><input id="l-pass" type="password" autocomplete="current-password" placeholder="••••••••"><button type="button" class="pw-eye" data-eye="l-pass" aria-label="Mostrar contraseña"></button></div>
+          </div>
+          <button class="btn-primary" id="loginBtn" type="submit">Entrar</button>
+        </form>
+        <button type="button" class="link-btn center" data-gv-go="forgot">¿Olvidaste tu contraseña?</button>
+        <div class="or"><span>o</span></div>
+        <button type="button" class="gbtn outline" id="googleLoginBtn"><span class="gic" data-g></span>Continuar con Google</button>
+        <p class="gv-foot">¿Aún no tienes acceso? <button type="button" class="link-btn" data-gv-go="register">Solicítalo aquí</button></p>
+      </section>
+
+      <!-- Registro: paso 1 (cuenta de Google) -->
+      <section class="gv hidden" data-gv="register">
+        <h2>Solicitar acceso</h2>
+        <p class="gv-sub">El catálogo es exclusivo para restaurantes de La Laguna. Así funciona:</p>
+        <ol class="steps">
+          <li><b>Verifica tu correo de Google.</b> Así sabemos que es un correo real.</li>
+          <li><b>Completa tus datos</b> y crea una contraseña para esta plataforma.</li>
+          <li><b>CANIRAC Laguna autoriza tu acceso.</b> Después entras con tu correo y contraseña.</li>
+        </ol>
+        <div class="form-msg" id="regStartMsg"></div>
+        <button type="button" class="gbtn" id="googleRegBtn"><span class="gic" data-g></span>Registrarme con Google</button>
+        <p class="gv-foot">¿Ya tienes cuenta? <button type="button" class="link-btn" data-gv-go="login">Inicia sesión</button></p>
+      </section>
+
+      <!-- Registro: paso 2 (datos + contraseña) -->
+      <section class="gv hidden" data-gv="profile">
+        <h2>Completa tu registro</h2>
+        <p class="gv-sub">Estos datos los revisa CANIRAC Laguna para autorizar tu acceso.</p>
+        <div class="acct-chip" id="regAccount"></div>
+        <div class="form-msg" id="regMsg"></div>
+        <form id="regForm" novalidate>
+          <div class="field"><label for="r-nombre">Nombre completo *</label><input id="r-nombre" autocomplete="name" maxlength="120" placeholder="Nombre y apellidos"></div>
+          <div class="field"><label for="r-nac">Fecha de nacimiento *</label><input id="r-nac" type="date" autocomplete="bday" min="1920-01-01"></div>
+          <div class="field"><label for="r-rest">Restaurante al que perteneces *</label><input id="r-rest" autocomplete="organization" maxlength="120" placeholder="Nombre del restaurante"></div>
+          <div class="field"><label for="r-puesto">Puesto *</label><input id="r-puesto" list="puestos" autocomplete="organization-title" maxlength="80" placeholder="Ej: Gerente, Chef, Compras…">
+            <datalist id="puestos">
+              <option value="Propietario / Socio"><option value="Gerente general"><option value="Gerente de compras">
+              <option value="Administrador"><option value="Chef / Jefe de cocina"><option value="Encargado de turno"><option value="Contador">
+            </datalist>
+          </div>
+          <div class="field"><label for="r-pass">Crea tu contraseña *</label>
+            <div class="pw"><input id="r-pass" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres"><button type="button" class="pw-eye" data-eye="r-pass" aria-label="Mostrar contraseña"></button></div>
+            <div class="pw-meter" id="pwMeter"><span></span></div>
+            <ul class="pw-rules" id="pwRules">
+              <li data-rule="len">Al menos 8 caracteres</li>
+              <li data-rule="let">Al menos una letra</li>
+              <li data-rule="num">Al menos un número</li>
+            </ul>
+          </div>
+          <div class="field"><label for="r-pass2">Confirma tu contraseña *</label>
+            <div class="pw"><input id="r-pass2" type="password" autocomplete="new-password" placeholder="Escríbela de nuevo"><button type="button" class="pw-eye" data-eye="r-pass2" aria-label="Mostrar contraseña"></button></div>
+            <small class="pw-match" id="pwMatch"></small>
+          </div>
+          <button class="btn-primary" id="regBtn" type="submit">Enviar solicitud</button>
+        </form>
+        <button type="button" class="link-btn center" id="regCancel">Cancelar y cerrar sesión</button>
+      </section>
+
+      <!-- Solicitud pendiente -->
+      <section class="gv hidden" data-gv="pending">
+        <div class="gv-center">
+          <div class="gv-icon wait" data-ic="clock"></div>
+          <h2>Solicitud en revisión</h2>
+          <p class="gv-sub">Recibimos tus datos. En cuanto CANIRAC Laguna confirme tu acceso, esta pantalla se abrirá sola y podrás entrar con tu correo y contraseña.</p>
+        </div>
+        <dl class="acc-summary" id="pendingSummary"></dl>
+        <a class="btn-wa" id="pendingWa" target="_blank" rel="noopener"></a>
+        <button type="button" class="link-btn center" data-logout>Cerrar sesión</button>
+      </section>
+
+      <!-- Acceso denegado -->
+      <section class="gv hidden" data-gv="denied">
+        <div class="gv-center">
+          <div class="gv-icon no" data-ic="close"></div>
+          <h2>Acceso no autorizado</h2>
+          <p class="gv-sub" id="deniedTxt">Tu solicitud de acceso al catálogo no fue autorizada. Si crees que es un error, comunícate con CANIRAC Laguna.</p>
+        </div>
+        <a class="btn-wa" id="deniedWa" target="_blank" rel="noopener"></a>
+        <button type="button" class="link-btn center" data-logout>Usar otra cuenta</button>
+      </section>
+
+      <!-- Recuperar contraseña -->
+      <section class="gv hidden" data-gv="forgot">
+        <h2>Recuperar contraseña</h2>
+        <p class="gv-sub">Te enviaremos un enlace a tu correo para crear una nueva contraseña.</p>
+        <div class="form-msg" id="forgotMsg"></div>
+        <form id="forgotForm" novalidate>
+          <div class="field"><label for="f-email">Correo</label><input id="f-email" type="email" inputmode="email" autocomplete="username" placeholder="tucorreo@gmail.com"></div>
+          <button class="btn-primary" id="forgotBtn" type="submit">Enviar enlace</button>
+        </form>
+        <button type="button" class="link-btn center" data-gv-go="login">‹ Volver a iniciar sesión</button>
+      </section>
+
+      <!-- Sin conexión -->
+      <section class="gv hidden" data-gv="offline">
+        <div class="gv-center">
+          <div class="gv-icon wait" data-ic="web"></div>
+          <h2>Sin conexión</h2>
+          <p class="gv-sub">Necesitas internet para iniciar sesión por primera vez. Revisa tu conexión e inténtalo de nuevo.</p>
+          <button type="button" class="btn-primary" onclick="location.reload()">Reintentar</button>
+        </div>
+      </section>
+
     </div>
-    <div class="splash-social" id="splashSocial"></div>
   </div>
 </div>
 
 <!-- ===== Barra de carga ===== -->
-<div class="app-loading" id="appLoading">
+<div class="app-loading gone" id="appLoading" style="display:none">
   <div class="loader-bar"><span></span></div>
   <div class="loader-box">
     <div class="spinner"></div>
@@ -47,11 +170,12 @@
 
 <!-- ===== Menú lateral (drawer) ===== -->
 <div class="overlay" id="overlay"></div>
-<aside class="drawer" id="drawer">
+<aside class="drawer" id="drawer" aria-label="Menú">
   <div class="drawer-top">
     <button class="close" id="drawerClose" aria-label="Cerrar" data-ic="close"></button>
     <div id="drawerBrand"></div>
   </div>
+  <div class="drawer-session" id="drawerSession"></div>
   <nav class="drawer-menu" id="drawerMenu">
     <a data-nav="inicio" data-ic="home">Inicio</a>
     <a data-nav="categorias" data-ic="grid">Categorías</a>
@@ -59,8 +183,8 @@
     <a data-nav="promociones" data-ic="tag">Promociones</a>
     <a data-nav="favoritos" data-ic="heart">Favoritos</a>
     <a data-nav="contacto" data-ic="phone">Contacto</a>
+    <a data-pwa-install hidden data-ic="download">Instalar app</a>
   </nav>
-  <div class="drawer-session" id="drawerSession"></div>
   <hr>
   <div class="rs-title">Redes sociales</div>
   <div class="drawer-social" id="drawerSocial"></div>
@@ -71,28 +195,45 @@
 <div class="app">
   <header class="app-header">
     <div class="bar">
-      <button class="hicon" id="menuBtn" aria-label="Menú" data-ic="menu"><span class="dot"></span></button>
-      <button class="hicon" id="bellBtn" aria-label="Notificaciones" data-ic="bell"><span class="bell-dot" id="bellDot" style="display:none"></span></button>
+      <button class="hicon h-menu" id="menuBtn" aria-label="Menú" data-ic="menu"><span class="dot"></span></button>
+      <div class="center-logo" id="headerBrand" data-nav="inicio"></div>
+      <nav class="top-nav" aria-label="Secciones">
+        <a data-nav="inicio" class="active">Inicio</a>
+        <a data-nav="categorias">Categorías</a>
+        <a data-nav="destacados">Destacados</a>
+        <a data-nav="promociones">Promociones</a>
+        <a data-nav="favoritos">Favoritos</a>
+        <a data-nav="contacto">Contacto</a>
+      </nav>
+      <div class="h-actions">
+        <button class="hicon" id="bellBtn" aria-label="Notificaciones" data-ic="bell"><span class="bell-dot" id="bellDot" style="display:none"></span></button>
+        <button class="h-user" id="userBtn" aria-label="Mi cuenta"><span class="h-av" id="userAv"></span><span class="h-name" id="userName"></span></button>
+      </div>
     </div>
-    <div class="center-logo" id="headerBrand"></div>
   </header>
 
   <!-- Vista INICIO -->
   <main class="content view" id="view-inicio">
     <div class="marquee" id="logoMarquee" style="display:none"></div>
-    <div class="hero-title">
-      <div class="eyebrow">Catálogo de</div>
-      <h1>Proveedores</h1>
+    <div class="home-hero">
+      <div>
+        <div class="hero-title">
+          <div class="eyebrow" id="helloTxt">Catálogo de</div>
+          <h1>Proveedores</h1>
+        </div>
+        <p class="hero-sub">Encuentra los mejores proveedores para tu restaurante.</p>
+      </div>
+      <div class="hero-search">
+        <div class="search">
+          <span class="sic" data-ic="search"></span>
+          <input id="searchInput" type="search" autocomplete="off" enterkeyhint="search" placeholder="Buscar proveedor… (ej: lentes, hielo, carne)">
+          <button class="s-clear hidden" id="searchClear" type="button" aria-label="Borrar búsqueda" data-ic="close"></button>
+        </div>
+        <div class="recent" id="recentSearches" style="display:none"></div>
+      </div>
     </div>
-    <p class="hero-sub">Encuentra los mejores proveedores para tu restaurante.</p>
 
-    <div class="search">
-      <span class="sic" data-ic="search"></span>
-      <input id="searchInput" type="search" autocomplete="off" placeholder="Buscar proveedor… (ej: lentes, hielo, carne)">
-    </div>
-    <div class="recent" id="recentSearches" style="display:none"></div>
-
-    <div class="list" id="homeResults" style="display:none"></div>
+    <div id="homeResults" style="display:none"></div>
 
     <div id="homeSections">
     <section class="section">
@@ -128,7 +269,7 @@
   <!-- Vista CATEGORÍAS -->
   <main class="content view hidden" id="view-categorias">
     <div class="view-head">
-      <button class="back-btn" data-nav="inicio" data-ic="chevL"></button>
+      <button class="back-btn" data-nav="inicio" data-ic="chevL" aria-label="Volver"></button>
       <div><h2>Categorías</h2><div class="sub">Explora por tipo de proveedor</div></div>
     </div>
     <div class="cat-grid all" id="catGridAll"></div>
@@ -137,7 +278,7 @@
   <!-- Vista LISTA (categoría / búsqueda / favoritos / destacados / promos) -->
   <main class="content view hidden" id="view-lista">
     <div class="view-head">
-      <button class="back-btn" id="listBack" data-ic="chevL"></button>
+      <button class="back-btn" id="listBack" data-ic="chevL" aria-label="Volver"></button>
       <div><h2 id="listTitle">Proveedores</h2><div class="sub" id="listSub"></div></div>
     </div>
     <div class="list" id="listGrid"></div>
@@ -146,14 +287,16 @@
   <!-- Vista CONTACTO -->
   <main class="content view hidden" id="view-contacto">
     <div class="view-head">
-      <button class="back-btn" data-nav="inicio" data-ic="chevL"></button>
+      <button class="back-btn" data-nav="inicio" data-ic="chevL" aria-label="Volver"></button>
       <div><h2>Contacto</h2><div class="sub">CANIRAC Laguna</div></div>
     </div>
     <div class="contact-card" id="contactCard"></div>
   </main>
+
+  <footer class="app-footer" id="appFooter"></footer>
 </div>
 
-<!-- ===== Barra inferior ===== -->
+<!-- ===== Barra inferior (solo teléfonos) ===== -->
 <nav class="bottom-nav">
   <button class="bnav active" data-nav="inicio"><span data-ic="home"></span>Inicio</button>
   <button class="bnav" data-nav="categorias"><span data-ic="grid"></span>Categorías</button>
@@ -165,7 +308,7 @@
 <div class="modal-overlay" id="notifModal">
   <div class="modal" style="max-width:480px">
     <div class="modal-head" style="background:var(--grad)">
-      <button class="m-close" id="notifClose" data-ic="close"></button>
+      <button class="m-close" data-close="notifModal" data-ic="close" aria-label="Cerrar"></button>
       <div class="mh-cat">Avisos</div>
       <h3>Notificaciones</h3>
     </div>
@@ -177,7 +320,7 @@
 <div class="modal-overlay" id="provModal">
   <div class="modal">
     <div class="modal-head" id="pmHead">
-      <button class="m-close" id="pmClose" data-ic="close"></button>
+      <button class="m-close" data-close="provModal" data-ic="close" aria-label="Cerrar"></button>
       <div class="mh-cat" id="pmCat"></div>
       <h3 id="pmName"></h3>
     </div>
@@ -185,35 +328,35 @@
   </div>
 </div>
 
-<!-- ===== Modal registro (equipo) ===== -->
+<!-- ===== Modal registro de proveedores ===== -->
 <div class="modal-overlay form-modal" id="joinModal">
   <div class="modal" style="max-width:480px">
     <div class="modal-head" style="background:var(--grad)">
-      <button class="m-close" id="jmClose" data-ic="close"></button>
+      <button class="m-close" data-close="joinModal" data-ic="close" aria-label="Cerrar"></button>
       <div class="mh-cat">Forma parte</div>
-      <h3>Únete a CANIRAC Laguna</h3>
+      <h3>Únete al catálogo</h3>
     </div>
     <div class="modal-body">
       <div id="jmForm">
         <p class="hero-sub" style="margin-top:0">Déjanos tus datos y un asesor te contactará.</p>
         <div class="form-msg" id="jmMsg"></div>
-        <div class="field"><label>Nombre completo *</label><input id="j-nombre" placeholder="Tu nombre"></div>
-        <div class="field"><label>Teléfono / WhatsApp *</label><input id="j-telefono" type="tel" placeholder="Ej: 871 123 4567"></div>
-        <div class="field"><label>Giro de tu negocio *</label><input id="j-giro" placeholder="Ej: Restaurante, cafetería…"></div>
-        <div class="field"><label>Mensaje (opcional)</label><textarea id="j-mensaje" placeholder="Cuéntanos sobre tu negocio"></textarea></div>
+        <div class="field"><label for="j-nombre">Nombre completo *</label><input id="j-nombre" maxlength="120" placeholder="Tu nombre"></div>
+        <div class="field"><label for="j-telefono">Teléfono / WhatsApp *</label><input id="j-telefono" type="tel" maxlength="40" placeholder="Ej: 871 123 4567"></div>
+        <div class="field"><label for="j-giro">Giro de tu negocio *</label><input id="j-giro" maxlength="120" placeholder="Ej: Carnes, limpieza, tecnología…"></div>
+        <div class="field"><label for="j-mensaje">Mensaje (opcional)</label><textarea id="j-mensaje" maxlength="2000" placeholder="Cuéntanos sobre tu negocio"></textarea></div>
         <button class="btn-primary" id="jmSend">Enviar solicitud</button>
       </div>
       <div id="jmOk" class="success-box hidden">
         <div class="circle">✓</div>
         <h3 style="font-size:1.3rem">¡Solicitud enviada!</h3>
         <p class="hero-sub" style="margin:.4rem auto 1.2rem">Gracias por tu interés. Pronto te contactaremos.</p>
-        <button class="btn-primary" id="jmDone" style="max-width:200px;margin:0 auto">Cerrar</button>
+        <button class="btn-primary" data-close="joinModal" style="max-width:200px;margin:0 auto">Cerrar</button>
       </div>
     </div>
   </div>
 </div>
 
-<script type="module" src="app.js"></script>
 <script src="pwa.js"></script>
+<script type="module" src="app.js"></script>
 </body>
 </html>

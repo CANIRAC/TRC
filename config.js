@@ -34,7 +34,9 @@ export const ADMIN = {
   // Correo interno usado para Firebase Authentication (Email/Password).
   email: "canirac@caniraclaguna.mx",
   // Contraseña de respaldo para el modo local (sin nube).
-  passwordLocal: "Ul1979_*"
+  // ⚠️ Este archivo es PÚBLICO (cualquiera puede abrir /config.js). Nunca escribas
+  // aquí la contraseña real del administrador. Vacía = modo local deshabilitado.
+  passwordLocal: ""
 };
 
 // ---- Datos de contacto de la Cámara (inicio, menú y contacto) ----

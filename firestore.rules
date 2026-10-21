@@ -7,32 +7,69 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.email == "canirac@caniraclaguna.mx";
     }
 
-    // Contenido público: proveedores y configuración del inicio.
-    // Cualquiera puede LEER. Solo el administrador puede ESCRIBIR.
-    // (Aunque un visitante inicie sesión con Google, NO puede modificar nada.)
+    // Usuario del catálogo cuya solicitud fue CONFIRMADA en el panel
+    // ("Autorizaciones de acceso").
+    function aprobado() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/accesos/$(request.auth.uid))
+        && get(/databases/$(database)/documents/accesos/$(request.auth.uid)).data.estado == "aprobado";
+    }
+
+    function texto(v, min, max) {
+      return v is string && v.size() >= min && v.size() <= max;
+    }
+
+    // Contenido del catálogo: proveedores y configuración del inicio.
+    // Solo lo LEEN las personas autorizadas (y el admin). Solo el admin ESCRIBE.
     match /content/{doc} {
-      allow read: if true;
+      allow read: if esAdmin() || aprobado();
       allow write: if esAdmin();
     }
 
-    // Solicitudes "Forma parte del equipo":
-    // Cualquiera puede ENVIAR (create). Solo el administrador puede VER/BORRAR.
+    // Solicitudes de acceso al catálogo (una por cuenta, id = uid).
+    // - La persona crea SU solicitud, siempre como "pendiente", con su correo
+    //   de Google verificado. No puede cambiarla ni aprobarse a sí misma.
+    // - Solo el administrador la confirma, la deniega o la elimina.
+    match /accesos/{uid} {
+      allow read: if esAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email_verified == true
+        && request.resource.data.keys().hasOnly(["uid", "email", "nombre", "fechaNacimiento", "restaurante", "puesto", "foto", "estado", "createdAt"])
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.estado == "pendiente"
+        && texto(request.resource.data.nombre, 3, 120)
+        && texto(request.resource.data.fechaNacimiento, 10, 10)
+        && texto(request.resource.data.restaurante, 2, 120)
+        && texto(request.resource.data.puesto, 2, 80)
+        && texto(request.resource.data.foto, 0, 600)
+        && request.resource.data.createdAt is number;
+      allow update, delete: if esAdmin();
+    }
+
+    // Solicitudes "¿Eres proveedor? Regístrate aquí" (desde el catálogo).
+    // Las envía una persona con sesión. Solo el administrador las VE/BORRA.
     match /equipo/{doc} {
-      allow create: if true;
+      allow create: if request.auth != null
+        && texto(request.resource.data.nombre, 1, 120)
+        && texto(request.resource.data.telefono, 1, 40)
+        && texto(request.resource.data.giro, 1, 120)
+        && texto(request.resource.data.mensaje, 0, 2000);
       allow read, update, delete: if esAdmin();
     }
 
-    // Datos privados de cada visitante que inició sesión (favoritos, búsquedas).
+    // Datos privados de cada usuario (favoritos, búsquedas).
     // Cada usuario solo puede leer/escribir SU propio documento.
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
     // Dispositivos registrados para avisos push.
-    // Cualquiera puede registrar SU dispositivo (crear/actualizar su token).
+    // Un usuario con sesión registra SU dispositivo (crear/actualizar su token).
     // Solo el administrador o la Cloud Function pueden leerlos/borrarlos.
     match /pushTokens/{token} {
-      allow create, update: if true;
+      allow create, update: if request.auth != null && request.resource.data.token == token;
       allow read, delete: if esAdmin();
     }
   }

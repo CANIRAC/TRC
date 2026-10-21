@@ -1,7 +1,14 @@
 # CANIRAC Laguna — Catálogo de Proveedores (app web)
 
-Sitio tipo **app** con:
+Sitio tipo **app** (instalable en teléfono y computadora) con:
 
+- **Acceso controlado**: el catálogo solo se abre para personas **autorizadas**. Cada persona se registra con su
+  **correo de Google**, crea y confirma una **contraseña** para esta plataforma y llena sus datos (nombre completo,
+  fecha de nacimiento, restaurante y puesto). La solicitud llega al panel → **Autorizaciones de acceso**, donde
+  eliges **Confirmar acceso** o **Denegar acceso**. Al confirmar, su correo y contraseña quedan habilitados de forma
+  permanente (hasta que tú lo cambies). También pueden recuperar su contraseña por correo.
+- **Diseño adaptable**: en teléfono se ve como app (barra inferior, menú lateral); en computadora, con menú superior,
+  más columnas y pie de página. El zoom manual está desactivado.
 - **Inicio**: logo, menú lateral (☰), campana de **notificaciones** (🔔), buscador, **Categorías**, **Proveedores destacados**, banner “¿Eres proveedor?” y sección “¿Por qué elegir CANIRAC Laguna?”.
 - **Barra de carga**: al entrar al catálogo se muestra una barra con el mensaje “Cargando catálogo…” para que el usuario sepa que la página está trabajando.
 - **Categorías**: explora los proveedores por tipo (Carnes, Bebidas, Limpieza, etc.).
@@ -10,8 +17,8 @@ Sitio tipo **app** con:
 - **Favoritos**: el visitante guarda sus proveedores.
 - **Contacto**: WhatsApp, Instagram, Facebook y sitio de la Cámara.
 - **Barra inferior**: Inicio · Categorías · Favoritos · Contacto.
-- **Registro** “Forma parte del equipo”: las solicitudes llegan al **panel de administración**.
-- **Panel de administración** (`admin.html`): agrega/edita/elimina proveedores, asigna **categoría**, marca **destacados**, sube **muchas fotos y videos**, gestiona **categorías** (las existentes ya aparecen), publica **notificaciones**, y ve/exporta las solicitudes de equipo.
+- **“¿Eres proveedor? Regístrate aquí”**: las solicitudes de proveedores llegan al **panel de administración**.
+- **Panel de administración** (`admin.html`, también instalable como app): **autoriza o deniega accesos**, agrega/edita/elimina proveedores, asigna **categoría**, marca **destacados**, sube **muchas fotos y videos**, gestiona **categorías** (las existentes ya aparecen), publica **notificaciones**, y ve/exporta las solicitudes de proveedores.
 
 Funciona con **Firebase** (nube), así los cambios se sincronizan en todos los dispositivos. Si no hay conexión, usa una copia local para no quedarse en blanco.
 
@@ -29,9 +36,10 @@ config.js          ⚙️ Firebase, usuario admin, WhatsApp, contacto
 store.js           Firebase (Firestore + Storage) + respaldo local
 seed.js            Los 62 proveedores con categorías
 ui.js              Logo e íconos
-manifest.json      Configuración de la app instalable (PWA)
+manifest.json      Configuración de la app instalable del catálogo (PWA)
+admin-manifest.json Configuración de la app instalable del panel (PWA)
 sw.js              Service worker (funciona sin conexión)
-pwa.js             Registro de la PWA
+pwa.js             Registro de la PWA, botón "Instalar app" y bloqueo de zoom
 firestore.rules    Reglas de seguridad de la base de datos
 storage.rules      Reglas de seguridad de fotos/videos (Storage)
 logo.png           Logo principal
@@ -49,17 +57,31 @@ Proyecto ya conectado: **canirac-2f1a4** (consola: https://console.firebase.goog
 1. Firestore Database → **Crear base de datos** → modo producción → crear.
 2. Pestaña **Reglas** → pega el contenido de `firestore.rules` → **Publicar**.
 
-**B. Acceso admin y de visitantes**
-1. Authentication → **Comenzar** → activa **Correo electrónico/contraseña** (para el admin).
-2. En la misma pantalla de métodos, activa también **Google** (para que los visitantes puedan
-   entrar con su cuenta de Google en el catálogo). Guarda.
-3. **Users → Agregar usuario**: correo `canirac@caniraclaguna.mx`, contraseña `Ul1979_*`.
+**B. Acceso admin y de usuarios del catálogo**
+1. Authentication → **Comenzar** → activa **Correo electrónico/contraseña** (lo usan el admin
+   **y** los usuarios del catálogo para entrar con la contraseña que crean).
+2. En la misma pantalla de métodos, activa también **Google** (con esa cuenta se registran y se
+   verifica que el correo sea real). Guarda.
+3. **Users → Agregar usuario**: el correo del administrador `canirac@caniraclaguna.mx` con su contraseña.
    (Al entrar al panel escribes usuario **canirac** y esa contraseña. Si cambias el correo,
    actualízalo en `config.js` **y** en `firestore.rules` / `storage.rules`.)
+4. *(Opcional)* Authentication → **Templates** → “Restablecimiento de contraseña”: cambia el idioma a
+   **Español** para el correo de “¿Olvidaste tu contraseña?”.
 
-> Aunque un visitante inicie sesión con Google, **no** puede modificar nada: las reglas solo
-> permiten escribir al correo del administrador. Si un visitante no quiere iniciar sesión, usa
-> el botón **“Entrar como invitado”**.
+> **Importante:** publica las reglas nuevas de `firestore.rules` (paso A.2). Son las que impiden que
+> alguien sin autorización lea el catálogo: sin ellas, el bloqueo sería solo visual.
+>
+> Ningún usuario del catálogo puede modificar nada: las reglas solo permiten escribir al administrador.
+> Ya **no existe** la entrada como invitado.
+
+**Cómo funciona el acceso**
+1. La persona abre el catálogo → **Solicítalo aquí** → **Registrarme con Google**.
+2. Llena nombre completo, fecha de nacimiento, restaurante, puesto, y **crea y confirma su contraseña**.
+3. En el panel → **Autorizaciones de acceso** aparece como **Pendiente** (con un globo rojo en la pestaña).
+4. **Confirmar acceso** → su pantalla se abre sola y, desde entonces, entra con **correo + contraseña**
+   (o con Google). **Denegar acceso** → ve el aviso “Acceso no autorizado” y no puede leer el catálogo.
+5. Puedes cambiar la decisión cuando quieras; si retiras un acceso, se le cierra al instante.
+   **Eliminar** un registro le permite volver a solicitarlo.
 
 **C. Almacenamiento de fotos y videos (Storage)** — *necesario para subir muchas fotos/videos*
 1. En la consola de Firebase entra a **Build → Storage** → **Comenzar / Get started**.
@@ -83,8 +105,10 @@ Authentication → Settings → **Authorized domains → Add domain**: agrega
 ## Publicar
 1. Sube **todos los archivos** (sueltos, en la raíz) a tu repositorio (reemplaza los anteriores).
 2. GitHub → Settings → Pages (rama `main`).
-3. Abre tu sitio. En `admin.html` inicia sesión (**canirac**) y haz clic **una vez** en
-   **“Cargar lista inicial (62)”** para guardar los proveedores con sus categorías en la nube.
+3. Abre tu sitio. En `admin.html` inicia sesión (**canirac**) y, si la nube está vacía, haz clic en
+   **“Completar lista inicial (62)”**. Solo agrega los que falten: **nunca** borra ni cambia los que ya editaste.
+4. Para ver el catálogo como administrador, entra en `index.html` con el correo
+   `canirac@caniraclaguna.mx` (o el usuario `canirac`) y tu contraseña.
 
 ---
 

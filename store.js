@@ -14,8 +14,10 @@ const LS = {
   prov: "canirac_providers_v1",
   site: "canirac_site_v1",
   team: "canirac_equipo_v1",
-  admin: "canirac_admin_v1"
+  admin: "canirac_admin_v1",
+  acc: "canirac_accesos_v1"
 };
+const ACC = "accesos"; // colección de solicitudes de acceso al catálogo
 
 let _app = null;     // instancia de la app de firebase
 let _db = null;
@@ -45,7 +47,9 @@ function notifyAdmin() {
 }
 
 // ---------- inicialización ----------
-export function init() {
+// appName: el panel usa su propia instancia ("admin") para que su sesión NO se
+// mezcle con la del catálogo (comparten dominio y, sin esto, comparten sesión).
+export function init(appName) {
   if (_ready) return _ready;
   _ready = (async () => {
     if (!USE_FIREBASE) { _mode = "local"; return _mode; }
@@ -60,7 +64,7 @@ export function init() {
         ]),
         timeout
       ]);
-      const app = initializeApp(firebaseConfig);
+      const app = appName ? initializeApp(firebaseConfig, appName) : initializeApp(firebaseConfig);
       _app = app;
       _fs = fs;
       _authFns = authMod;
@@ -84,16 +88,24 @@ export function getMode() { return _mode; }
 // ============================================================
 //  PROVEEDORES
 // ============================================================
-export async function getProviders() {
+// strict=true (panel admin): si la nube falla, LANZA el error en vez de devolver
+// la copia local/semilla. Así el admin nunca sobrescribe la nube con datos viejos.
+export async function getProviders({ strict = false } = {}) {
   await init();
   if (_mode === "cloud") {
     try {
       const ref = _fs.doc(_db, "content", "providers");
       const snap = await _fs.getDoc(ref);
       if (snap.exists() && Array.isArray(snap.data().list) && snap.data().list.length) {
-        return snap.data().list;
+        const list = snap.data().list;
+        lset(LS.prov, list); // copia para usar sin conexión
+        return list;
       }
-    } catch (e) { console.warn("getProviders cloud fail -> seed/local", e); }
+      if (strict) return clone(SEED_PROVEEDORES); // nube vacía: primera vez
+    } catch (e) {
+      if (strict) throw e;
+      console.warn("getProviders cloud fail -> seed/local", e);
+    }
   }
   return lget(LS.prov, clone(SEED_PROVEEDORES));
 }
@@ -111,14 +123,22 @@ export async function saveProviders(list) {
 // ============================================================
 //  CONTENIDO DEL INICIO (carrusel, video, textos)
 // ============================================================
-export async function getSite() {
+export async function getSite({ strict = false } = {}) {
   await init();
   if (_mode === "cloud") {
     try {
       const ref = _fs.doc(_db, "content", "site");
       const snap = await _fs.getDoc(ref);
-      if (snap.exists()) return Object.assign(clone(DEFAULT_SITE), snap.data());
-    } catch (e) { console.warn("getSite cloud fail -> default/local", e); }
+      if (snap.exists()) {
+        const site = Object.assign(clone(DEFAULT_SITE), snap.data());
+        lset(LS.site, site);
+        return site;
+      }
+      if (strict) return clone(DEFAULT_SITE);
+    } catch (e) {
+      if (strict) throw e;
+      console.warn("getSite cloud fail -> default/local", e);
+    }
   }
   return lget(LS.site, clone(DEFAULT_SITE));
 }
@@ -189,10 +209,18 @@ export async function adminLogin(usuario, password) {
   if (_mode === "cloud") {
     const email = usuario.includes("@") ? usuario : ADMIN.email;
     await _authFns.signInWithEmailAndPassword(_auth, email, password);
+    // Ahora hay usuarios del catálogo con contraseña: solo el correo admin entra al panel.
+    if (!isAdmin()) {
+      try { await _authFns.signOut(_auth); } catch (e) {}
+      const err = new Error("Esta cuenta no tiene permisos de administrador.");
+      err.code = "no-admin";
+      throw err;
+    }
     notifyAdmin();
     return true;
   }
   // local
+  if (!ADMIN.passwordLocal) throw new Error("Sin conexión con la nube. Revisa tu internet e inténtalo de nuevo.");
   if (usuario === ADMIN.usuario && password === ADMIN.passwordLocal) {
     sessionStorage.setItem(LS.admin, "1");
     notifyAdmin();
@@ -210,23 +238,54 @@ export async function adminLogout() {
   notifyAdmin();
 }
 
+export function isAdminEmail(email) {
+  return (email || "").trim().toLowerCase() === ADMIN.email.toLowerCase();
+}
 export function isAdmin() {
   // En la nube, SOLO el correo del administrador cuenta como admin.
-  // (Así, aunque un visitante inicie sesión con Google, no obtiene acceso de admin.)
-  if (_mode === "cloud") return !!(_auth && _auth.currentUser && _auth.currentUser.email === ADMIN.email);
+  // (Así, aunque un usuario del catálogo inicie sesión, no obtiene acceso de admin.)
+  if (_mode === "cloud") return !!(_auth && _auth.currentUser && isAdminEmail(_auth.currentUser.email));
   return sessionStorage.getItem(LS.admin) === "1";
 }
 
-// ---------- Acceso de VISITANTES con Google (solo para el catálogo) ----------
+// Espera a que Firebase restaure la sesión guardada (si la hay) y la devuelve.
+export async function authReady() {
+  await init();
+  if (_mode !== "cloud" || !_auth) return null;
+  if (_auth.authStateReady) await _auth.authStateReady();
+  else await new Promise(res => { const off = _authFns.onAuthStateChanged(_auth, () => { off(); res(); }); });
+  return _auth.currentUser || null;
+}
+
+// ---------- Acceso al CATÁLOGO ----------
+function googleProvider() {
+  const provider = new _authFns.GoogleAuthProvider();
+  try { provider.setCustomParameters({ prompt: "select_account" }); } catch (e) {}
+  return provider;
+}
+// Registro / inicio con la cuenta de Google (verifica que el correo sea real).
 export async function googleLogin() {
   await init();
   if (_mode !== "cloud" || !_auth || !_authFns || !_authFns.GoogleAuthProvider) {
     throw new Error("sin-nube");
   }
-  const provider = new _authFns.GoogleAuthProvider();
-  try { provider.setCustomParameters({ prompt: "select_account" }); } catch (e) {}
-  const res = await _authFns.signInWithPopup(_auth, provider);
+  const res = await _authFns.signInWithPopup(_auth, googleProvider());
   return res.user;
+}
+// Inicio con el correo y la contraseña creados en esta plataforma.
+export async function emailLogin(email, password) {
+  await init();
+  if (_mode !== "cloud") throw new Error("sin-nube");
+  email = (email || "").trim();
+  if (!email.includes("@") && email.toLowerCase() === ADMIN.usuario) email = ADMIN.email;
+  const res = await _authFns.signInWithEmailAndPassword(_auth, email, password);
+  return res.user;
+}
+export async function resetPassword(email) {
+  await init();
+  if (_mode !== "cloud") throw new Error("sin-nube");
+  try { _auth.languageCode = "es"; } catch (e) {}
+  await _authFns.sendPasswordResetEmail(_auth, (email || "").trim());
 }
 export function currentUser() {
   return (_auth && _auth.currentUser) ? _auth.currentUser : null;
@@ -236,6 +295,93 @@ export async function logout() {
   if (_mode === "cloud" && _auth) { try { await _authFns.signOut(_auth); } catch (e) {} }
   sessionStorage.removeItem(LS.admin);
   notifyAdmin();
+}
+
+// Agrega (o cambia) la contraseña de esta plataforma a la cuenta de Google.
+// Después, la persona puede entrar con correo + contraseña.
+async function setPlatformPassword(user, password, retried) {
+  const hasPwd = (user.providerData || []).some(p => p.providerId === "password");
+  try {
+    if (hasPwd) await _authFns.updatePassword(user, password);
+    else await _authFns.linkWithCredential(user, _authFns.EmailAuthProvider.credential(user.email, password));
+  } catch (e) {
+    const c = (e && e.code) || "";
+    if (c === "auth/provider-already-linked") { await _authFns.updatePassword(user, password); return; }
+    if (c === "auth/requires-recent-login" && !retried) {
+      await _authFns.reauthenticateWithPopup(user, googleProvider());
+      return setPlatformPassword(_auth.currentUser, password, true);
+    }
+    throw e;
+  }
+}
+
+// Envía la solicitud de acceso (queda "pendiente" hasta que el admin decida).
+export async function registerAccess(data) {
+  await init();
+  if (_mode !== "cloud") throw new Error("sin-nube");
+  const u = currentUser();
+  if (!u || !u.email) throw new Error("sin-sesion");
+  await setPlatformPassword(u, data.password);
+  const rec = {
+    uid: u.uid,
+    email: u.email,
+    nombre: data.nombre,
+    fechaNacimiento: data.fechaNacimiento,
+    restaurante: data.restaurante,
+    puesto: data.puesto,
+    foto: u.photoURL || "",
+    estado: "pendiente",
+    createdAt: Date.now()
+  };
+  await _fs.setDoc(_fs.doc(_db, ACC, u.uid), rec);
+  return rec;
+}
+export async function getMyAccess() {
+  await init();
+  const u = currentUser();
+  if (_mode !== "cloud" || !u) return null;
+  const snap = await _fs.getDoc(_fs.doc(_db, ACC, u.uid));
+  return snap.exists() ? Object.assign({ id: snap.id }, snap.data()) : null;
+}
+// Escucha en vivo el estado de MI solicitud (aprobación o revocación al instante).
+export function watchMyAccess(cb) {
+  const u = currentUser();
+  if (_mode !== "cloud" || !u) return () => {};
+  return _fs.onSnapshot(_fs.doc(_db, ACC, u.uid),
+    s => cb(s.exists() ? Object.assign({ id: s.id }, s.data()) : null),
+    e => console.warn("watchMyAccess", e));
+}
+
+// ---------- Autorizaciones (panel admin) ----------
+export async function watchAccessRequests(cb, onError) {
+  await init();
+  if (_mode === "cloud") {
+    const q = _fs.query(_fs.collection(_db, ACC), _fs.orderBy("createdAt", "desc"));
+    return _fs.onSnapshot(q,
+      snap => cb(snap.docs.map(d => Object.assign({ id: d.id }, d.data()))),
+      e => { console.warn("watchAccessRequests", e); if (onError) onError(e); });
+  }
+  cb(lget(LS.acc, []));
+  return () => {};
+}
+export async function setAccessStatus(uid, estado) {
+  await init();
+  const patch = { estado, decididoAt: Date.now(), decididoPor: (currentUser() && currentUser().email) || ADMIN.usuario };
+  if (_mode === "cloud") {
+    await _fs.updateDoc(_fs.doc(_db, ACC, uid), patch);
+    return true;
+  }
+  lset(LS.acc, lget(LS.acc, []).map(r => r.id === uid ? Object.assign({}, r, patch) : r));
+  return true;
+}
+export async function deleteAccess(uid) {
+  await init();
+  if (_mode === "cloud") {
+    await _fs.deleteDoc(_fs.doc(_db, ACC, uid));
+    return true;
+  }
+  lset(LS.acc, lget(LS.acc, []).filter(r => r.id !== uid));
+  return true;
 }
 
 // ---------- Datos por usuario (favoritos, búsquedas) ----------
@@ -301,11 +447,13 @@ async function _registerPush(interactive) {
   // Registrar el SW de mensajería en SU PROPIO ámbito, para que NO choque con
   // el service worker del catálogo (sw.js). Ese choque hacía que el push llegara
   // pero nadie lo mostrara.
+  // (Sin respaldo en el ámbito raíz: eso reemplazaría a sw.js y rompería el modo sin conexión.)
   let reg;
   try {
     reg = await navigator.serviceWorker.register("firebase-messaging-sw.js", { scope: "/firebase-cloud-messaging-push-scope" });
   } catch (e) {
-    try { reg = await navigator.serviceWorker.register("firebase-messaging-sw.js"); } catch (e2) { reg = undefined; }
+    if (interactive) throw new Error("sin-soporte");
+    return null;
   }
 
   const token = await msgMod.getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
@@ -361,12 +509,20 @@ export function onAdminChange(fn) {
 }
 
 // Publica los datos semilla en Firestore (acción del panel admin).
+// Solo AGREGA los proveedores de la lista inicial que falten: nunca borra ni
+// sobrescribe los que ya editaste (fotos, videos, descripciones…).
+// Devuelve cuántos proveedores se agregaron.
 export async function publishSeed() {
   await init();
-  await saveProviders(clone(SEED_PROVEEDORES));
-  const current = await getSite();
-  await saveSite(Object.assign(clone(DEFAULT_SITE), current));
-  return true;
+  const current = await getProviders({ strict: true });
+  const ids = new Set(current.map(p => String(p.id)));
+  const merged = current.slice();
+  SEED_PROVEEDORES.forEach(s => { if (!ids.has(String(s.id))) merged.push(clone(s)); });
+  merged.sort((a, b) => (+a.id || 0) - (+b.id || 0));
+  await saveProviders(merged);
+  const site = await getSite({ strict: true });
+  await saveSite(Object.assign(clone(DEFAULT_SITE), site));
+  return merged.length - current.length;
 }
 
 // ============================================================

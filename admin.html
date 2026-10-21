@@ -2,14 +2,21 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Administración — CANIRAC Laguna</title>
 <meta name="theme-color" content="#1877E6">
+<meta name="robots" content="noindex, nofollow">
+<meta name="format-detection" content="telephone=no">
 <link rel="icon" href="logoapp.png" type="image/png">
+<link rel="manifest" href="admin-manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Admin CANIRAC">
 <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="admin-page">
 
 <!-- LOGIN -->
 <div class="login-wrap" id="loginView">
@@ -18,9 +25,10 @@
     <h1>Administración</h1>
     <p class="sub">Acceso del equipo CANIRAC Laguna</p>
     <div class="form-msg" id="loginMsg"></div>
-    <form id="loginForm">
-      <div class="field"><label>Usuario</label><input id="user" value="canirac" autocomplete="username"></div>
-      <div class="field"><label>Contraseña</label><input id="pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+    <div class="login-checking" id="loginChecking"><div class="spinner" style="margin:.5rem auto"></div>Verificando sesión…</div>
+    <form id="loginForm" class="hidden">
+      <div class="field"><label for="user">Usuario</label><input id="user" value="canirac" autocomplete="username" autocapitalize="off"></div>
+      <div class="field"><label for="pass">Contraseña</label><input id="pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
       <button class="btn-primary" id="loginBtn" type="submit">Entrar</button>
     </form>
     <p style="text-align:center;margin-top:1rem"><a href="index.html" style="color:var(--primary);font-weight:600;font-size:.9rem">‹ Volver al sitio</a></p>
@@ -34,21 +42,40 @@
       <div id="adminBrand"></div>
       <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
         <span class="pill" id="modePill"></span>
-        <a class="btn-w ghost" href="index.html" target="_blank">Ver sitio ↗</a>
+        <button class="btn-w ghost" data-pwa-install hidden>Instalar app</button>
+        <a class="btn-w ghost" href="index.html" target="_blank" rel="noopener">Ver sitio ↗</a>
         <button class="btn-w" id="logoutBtn">Salir</button>
       </div>
     </div>
   </div>
 
   <div class="admin-body">
-    <div class="atabs">
+    <nav class="atabs" aria-label="Secciones del panel">
       <button class="atab active" data-tab="prov">Proveedores</button>
+      <button class="atab" data-tab="accesos">Autorizaciones de acceso <span class="b hidden" id="accBadge">0</span></button>
       <button class="atab" data-tab="cats">Categorías</button>
       <button class="atab" data-tab="notifs">Notificaciones</button>
       <button class="atab" data-tab="slider">Slider</button>
-      <button class="atab" data-tab="equipo">Equipo <span class="b hidden" id="eqBadge">0</span></button>
+      <button class="atab" data-tab="equipo">Solicitudes de proveedores <span class="b hidden" id="eqBadge">0</span></button>
       <button class="atab" data-tab="tema">Apariencia</button>
-    </div>
+    </nav>
+    <div class="apanels">
+
+    <!-- AUTORIZACIONES DE ACCESO -->
+    <section class="apanel" id="p-accesos">
+      <div class="hint">Aquí aparecen todas las personas que se registran para entrar al catálogo. <b>Confirmar acceso</b> habilita su correo y contraseña de forma permanente. <b>Denegar acceso</b> les impide entrar. Puedes cambiar la decisión cuando quieras: el cambio se aplica al instante, incluso si la persona tiene el catálogo abierto.</div>
+      <div class="acc-filters" id="accFilters">
+        <button class="acc-f active" data-f="pendiente">Pendientes <b id="accN-pendiente">0</b></button>
+        <button class="acc-f" data-f="aprobado">Confirmados <b id="accN-aprobado">0</b></button>
+        <button class="acc-f" data-f="denegado">Denegados <b id="accN-denegado">0</b></button>
+        <button class="acc-f" data-f="todos">Todos <b id="accN-todos">0</b></button>
+      </div>
+      <div class="atoolbar">
+        <div class="grow"><input id="accSearch" type="search" placeholder="Buscar por nombre, correo, restaurante o puesto…"></div>
+        <button class="btn-soft" id="accExport">Exportar CSV</button>
+      </div>
+      <div class="acc-list" id="accList"></div>
+    </section>
 
     <!-- PROVEEDORES -->
     <section class="apanel active" id="p-prov">
@@ -56,7 +83,7 @@
       <div class="atoolbar">
         <div class="grow"><input id="provSearch" placeholder="Buscar por nombre, categoría o giro…"></div>
         <button class="btn-blue" id="addBtn">+ Agregar</button>
-        <button class="btn-soft" id="seedBtn">Cargar lista inicial (62)</button>
+        <button class="btn-soft" id="seedBtn" title="Agrega los proveedores de la lista inicial que falten. No borra ni cambia los existentes.">Completar lista inicial (62)</button>
       </div>
       <div id="provCount" class="muted" style="margin:.2rem 0 .8rem;color:var(--muted);font-size:.9rem"></div>
       <div style="overflow-x:auto">
@@ -69,7 +96,7 @@
 
     <!-- EQUIPO -->
     <section class="apanel" id="p-equipo">
-      <div class="hint">Aquí llegan las solicitudes de <b>“Regístrate / Forma parte del equipo”</b> del sitio.</div>
+      <div class="hint">Aquí llegan las solicitudes de <b>“¿Eres proveedor? Regístrate aquí”</b> del catálogo (proveedores que quieren aparecer).</div>
       <div class="atoolbar">
         <div class="grow muted" id="eqCount" style="color:var(--muted);font-size:.92rem"></div>
         <button class="btn-soft" id="exportBtn">Exportar CSV</button>
@@ -186,6 +213,7 @@
         <button class="btn-primary" id="th-save" style="max-width:240px">Guardar apariencia</button>
       </div>
     </section>
+    </div>
   </div>
 </div>
 
@@ -257,7 +285,7 @@
 </aside>
 
 <script type="module">
-import { brandHTML, ICONS, CATEGORY_ICONS, escapeHtml, toast } from "./ui.js";
+import { brandHTML, ICONS, CATEGORY_ICONS, escapeHtml, safeUrl, toast } from "./ui.js";
 import { ADMIN } from "./config.js";
 import { CATEGORIAS } from "./seed.js";
 import * as store from "./store.js";
@@ -265,17 +293,21 @@ import * as store from "./store.js";
 document.getElementById("loginBrand").innerHTML = brandHTML({ vertical:true });
 document.getElementById("adminBrand").innerHTML = brandHTML({ onDark:true });
 document.getElementById("edClose").innerHTML = ICONS.close;
-document.getElementById("f-categoria").innerHTML = CATEGORIAS.map(c=>`<option>${c.nombre}</option>`).join("");
+fillCatSelect(CATEGORIAS);
 
-let PROV=[], EQ=[], SITE=null;
+let PROV=[], EQ=[], SITE=null, ACCS=[];
+let provLoaded=false, siteLoaded=false, adminShown=false;
 
 (async ()=>{
-  await store.init();
+  // Instancia propia ("admin"): la sesión del panel no se mezcla con la del catálogo.
+  await store.init("admin");
   const pill=document.getElementById("modePill");
   if(store.getMode()==="cloud"){ pill.textContent="● Nube"; pill.className="pill cloud"; }
   else { pill.textContent="● Local"; pill.className="pill local"; }
   store.onAdminChange(v=>{ if(v) showAdmin(); });
+  await store.authReady();
   if(store.isAdmin()) showAdmin();
+  else { document.getElementById("loginChecking").classList.add("hidden"); document.getElementById("loginForm").classList.remove("hidden"); }
 })();
 
 // Login
@@ -283,31 +315,155 @@ document.getElementById("loginForm").addEventListener("submit", async e=>{
   e.preventDefault();
   const msg=document.getElementById("loginMsg"); msg.className="form-msg";
   const b=document.getElementById("loginBtn"); b.disabled=true; b.textContent="Entrando…";
-  try{ await store.adminLogin(document.getElementById("user").value, document.getElementById("pass").value); showAdmin(); }
+  try{ await store.adminLogin(document.getElementById("user").value, document.getElementById("pass").value); document.getElementById("pass").value=""; showAdmin(); }
   catch(err){ msg.className="form-msg err"; msg.textContent=friendly(err); }
   finally{ b.disabled=false; b.textContent="Entrar"; }
 });
 function friendly(err){
   const c=(err&&err.code)||"";
+  if(c==="no-admin") return err.message;
   if(c.includes("wrong-password")||c.includes("invalid-credential")||c.includes("user-not-found"))
     return "Usuario o contraseña incorrectos. (En la nube crea el usuario admin en Firebase, ver README.)";
+  if(c.includes("too-many-requests")) return "Demasiados intentos. Espera unos minutos.";
+  if(c.includes("network")) return "Sin conexión. Revisa tu internet.";
   return (err&&err.message)||"No se pudo iniciar sesión.";
 }
 document.getElementById("logoutBtn").onclick=async()=>{ await store.adminLogout(); location.reload(); };
 
 async function showAdmin(){
+  if(adminShown) return;   // onAuthStateChanged y el formulario pueden llamarlo dos veces
+  adminShown = true;
   document.getElementById("loginView").classList.add("hidden");
   document.getElementById("adminView").classList.remove("hidden");
   await loadProv();
   await Promise.all([loadEq(), loadSite()]);
+  watchAccesos();
 }
 
 // Tabs
-document.querySelectorAll(".atab").forEach(t=>t.onclick=()=>{
-  document.querySelectorAll(".atab").forEach(x=>x.classList.remove("active"));
-  document.querySelectorAll(".apanel").forEach(x=>x.classList.remove("active"));
-  t.classList.add("active"); document.getElementById("p-"+t.dataset.tab).classList.add("active");
+function openTab(name){
+  document.querySelectorAll(".atab").forEach(x=>x.classList.toggle("active", x.dataset.tab===name));
+  document.querySelectorAll(".apanel").forEach(x=>x.classList.toggle("active", x.id==="p-"+name));
+  const t=document.querySelector(`.atab[data-tab="${name}"]`); if(t && t.scrollIntoView) t.scrollIntoView({block:"nearest",inline:"center"});
+  window.scrollTo({top:0});
+  try{ sessionStorage.setItem("canirac_admin_tab", name); }catch(e){}
+}
+document.querySelectorAll(".atab").forEach(t=>t.onclick=()=>openTab(t.dataset.tab));
+try{ const last=sessionStorage.getItem("canirac_admin_tab"); if(last && document.getElementById("p-"+last)) openTab(last); }catch(e){}
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && editor.classList.contains("open")) closeEditor(); });
+
+// ============================================================
+//  AUTORIZACIONES DE ACCESO (usuarios del catálogo)
+// ============================================================
+let accFilter="pendiente", accFirst=true, accKnown=new Set();
+const EST = { pendiente:"Pendiente", aprobado:"Acceso confirmado", denegado:"Acceso denegado" };
+async function watchAccesos(){
+  try{
+    await store.watchAccessRequests(list=>{
+      // Aviso cuando llega una solicitud nueva mientras el panel está abierto
+      if(!accFirst){
+        list.filter(r=>r.estado==="pendiente" && !accKnown.has(r.id)).forEach(r=>toast("Nueva solicitud de acceso: "+(r.nombre||r.email), "", 4500));
+      }
+      accFirst=false; accKnown=new Set(list.map(r=>r.id));
+      ACCS=list; renderAccesos();
+    }, err=>{
+      document.getElementById("accList").innerHTML = `<div class="acc-empty">No se pudieron cargar las solicitudes. Publica las reglas nuevas de Firestore (<b>firestore.rules</b>) y recarga.<br><small>${escapeHtml((err&&err.code)||"")}</small></div>`;
+    });
+  }catch(e){ console.error(e); }
+}
+function ageOf(iso){
+  if(!iso) return "";
+  const b=new Date(iso+"T12:00:00"); if(isNaN(b)) return "";
+  const n=new Date(); let a=n.getFullYear()-b.getFullYear();
+  if(n.getMonth()<b.getMonth() || (n.getMonth()===b.getMonth() && n.getDate()<b.getDate())) a--;
+  return a;
+}
+function fbirth(iso){
+  if(!iso) return "—";
+  const d=new Date(iso+"T12:00:00"); if(isNaN(d)) return escapeHtml(iso);
+  return d.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})+` · ${ageOf(iso)} años`;
+}
+function initialsOf(n){ return (n||"?").trim().split(/\s+/).slice(0,2).map(w=>w[0]).join("").toUpperCase(); }
+function renderAccesos(){
+  const counts={ pendiente:0, aprobado:0, denegado:0, todos:ACCS.length };
+  ACCS.forEach(r=>{ if(counts[r.estado]!=null) counts[r.estado]++; });
+  Object.keys(counts).forEach(k=>{ const el=document.getElementById("accN-"+k); if(el) el.textContent=counts[k]; });
+  const badge=document.getElementById("accBadge");
+  if(counts.pendiente){ badge.textContent=counts.pendiente; badge.classList.remove("hidden"); } else badge.classList.add("hidden");
+  try{ if(navigator.setAppBadge){ counts.pendiente ? navigator.setAppBadge(counts.pendiente) : navigator.clearAppBadge(); } }catch(e){}
+
+  const q=document.getElementById("accSearch").value.trim().toLowerCase();
+  const list=ACCS.filter(r=>(accFilter==="todos"||r.estado===accFilter) &&
+    (!q || [r.nombre,r.email,r.restaurante,r.puesto].join(" ").toLowerCase().includes(q)));
+  const box=document.getElementById("accList");
+  if(!list.length){
+    const txt = q ? "Sin resultados para esa búsqueda." : ({pendiente:"No hay solicitudes pendientes. 🎉", aprobado:"Aún no has confirmado a nadie.", denegado:"No hay solicitudes denegadas.", todos:"Aún no se ha registrado nadie."})[accFilter];
+    box.innerHTML=`<div class="acc-empty">${txt}</div>`; return;
+  }
+  box.innerHTML=list.map(r=>{
+    const foto=safeUrl(r.foto);
+    const decided = r.decididoAt ? `<small class="acc-dec">${r.estado==="aprobado"?"Confirmado":"Denegado"} el ${fdate(r.decididoAt)}</small>` : `<small class="acc-dec">Esperando tu decisión</small>`;
+    return `<article class="acc-card st-${escapeHtml(r.estado)}">
+      <div class="acc-head">
+        <span class="acc-av">${foto?`<img src="${escapeHtml(foto)}" alt="" referrerpolicy="no-referrer">`:escapeHtml(initialsOf(r.nombre||r.email))}</span>
+        <div class="acc-id"><b>${escapeHtml(r.nombre||"—")}</b><a href="mailto:${escapeHtml(r.email)}">${escapeHtml(r.email)}</a></div>
+        <span class="acc-st ${escapeHtml(r.estado)}">${EST[r.estado]||escapeHtml(r.estado)}</span>
+      </div>
+      <dl class="acc-data">
+        <div><dt>Restaurante</dt><dd>${escapeHtml(r.restaurante||"—")}</dd></div>
+        <div><dt>Puesto</dt><dd>${escapeHtml(r.puesto||"—")}</dd></div>
+        <div><dt>Fecha de nacimiento</dt><dd>${fbirth(r.fechaNacimiento)}</dd></div>
+        <div><dt>Solicitud</dt><dd>${fdate(r.createdAt)}</dd></div>
+      </dl>
+      <div class="acc-foot">
+        ${decided}
+        <div class="acc-acts">
+          ${r.estado!=="pendiente"?`<button class="icon-btn del" data-acc-del="${escapeHtml(r.id)}" title="Eliminar registro (podrá volver a solicitar)">${ICONS.trash}</button>`:""}
+          <button class="btn-deny" data-acc-deny="${escapeHtml(r.id)}" ${r.estado==="denegado"?"disabled":""}>Denegar acceso</button>
+          <button class="btn-ok" data-acc-ok="${escapeHtml(r.id)}" ${r.estado==="aprobado"?"disabled":""}>Confirmar acceso</button>
+        </div>
+      </div>
+    </article>`;
+  }).join("");
+  box.querySelectorAll("[data-acc-ok]").forEach(b=>b.onclick=()=>decideAccess(b.dataset.accOk,"aprobado",b));
+  box.querySelectorAll("[data-acc-deny]").forEach(b=>b.onclick=()=>decideAccess(b.dataset.accDeny,"denegado",b));
+  box.querySelectorAll("[data-acc-del]").forEach(b=>b.onclick=()=>removeAccess(b.dataset.accDel));
+}
+async function decideAccess(id, estado, btn){
+  const r=ACCS.find(x=>x.id===id); if(!r) return;
+  if(estado==="denegado" && !confirm(`¿Denegar el acceso a ${r.nombre||r.email}?\n\nNo podrá entrar al catálogo${r.estado==="aprobado"?" (se le cierra aunque lo tenga abierto)":""}.`)) return;
+  btn.disabled=true;
+  try{
+    await store.setAccessStatus(id, estado);
+    toast(estado==="aprobado" ? `Acceso confirmado: ${r.nombre||r.email}` : `Acceso denegado: ${r.nombre||r.email}`);
+    if(store.getMode()!=="cloud"){ ACCS=ACCS.map(x=>x.id===id?Object.assign({},x,{estado,decididoAt:Date.now()}):x); renderAccesos(); }
+  }catch(e){ console.error(e); toast("No se pudo guardar la decisión. ¿Publicaste las reglas nuevas?","err",5000); btn.disabled=false; }
+}
+async function removeAccess(id){
+  const r=ACCS.find(x=>x.id===id); if(!r) return;
+  if(!confirm(`¿Eliminar el registro de ${r.nombre||r.email}?\n\nSe borra su solicitud. Si vuelve a registrarse, aparecerá otra vez como pendiente.`)) return;
+  try{
+    await store.deleteAccess(id); toast("Registro eliminado");
+    if(store.getMode()!=="cloud"){ ACCS=ACCS.filter(x=>x.id!==id); renderAccesos(); }
+  }catch(e){ console.error(e); toast("No se pudo eliminar","err"); }
+}
+document.querySelectorAll(".acc-f").forEach(b=>b.onclick=()=>{
+  accFilter=b.dataset.f;
+  document.querySelectorAll(".acc-f").forEach(x=>x.classList.toggle("active", x===b));
+  renderAccesos();
 });
+document.getElementById("accSearch").oninput=renderAccesos;
+document.getElementById("accExport").onclick=()=>{
+  if(!ACCS.length){ toast("Sin datos","err"); return; }
+  const rows=[["Nombre","Correo","Fecha de nacimiento","Edad","Restaurante","Puesto","Estado","Solicitud","Decisión"]];
+  ACCS.forEach(r=>rows.push([r.nombre,r.email,r.fechaNacimiento,ageOf(r.fechaNacimiento),r.restaurante,r.puesto,EST[r.estado]||r.estado,fdate(r.createdAt),r.decididoAt?fdate(r.decididoAt):""]));
+  downloadCsv(rows, "autorizaciones_canirac.csv");
+};
+function downloadCsv(rows, name){
+  const csv=rows.map(r=>r.map(c=>`"${String(c??"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"})); a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+}
 
 // ============================================================
 //  SUBIDA DE ARCHIVOS (Firebase Storage con respaldo local)
@@ -364,7 +520,14 @@ async function uploadVideoFile(file){
 
 // ---------- Proveedores ----------
 async function loadProv(){
-  PROV = (await store.getProviders()).map(p=>Object.assign({fotos:[],videos:[],descripcion:"",categoria:"Otros",destacado:false,badge:"",whatsapp:"",instagram:"",facebook:"",web:"",contacto:"",telContacto:"",telNegocio:"",giro:"",color:"",video:"",logo:""},p));
+  try{
+    // strict: si la nube falla NO se usa la copia local (evita sobrescribir la nube con datos viejos)
+    PROV = (await store.getProviders({ strict:true })).map(p=>Object.assign({fotos:[],videos:[],descripcion:"",categoria:"Otros",destacado:false,badge:"",whatsapp:"",instagram:"",facebook:"",web:"",contacto:"",telContacto:"",telNegocio:"",giro:"",color:"",video:"",logo:""},p));
+    provLoaded = true;
+  }catch(e){
+    console.error(e); PROV = []; provLoaded = false;
+    toast("No se pudieron cargar los proveedores. Revisa tu conexión y recarga la página.","err",7000);
+  }
   renderProv();
 }
 const provSearch=document.getElementById("provSearch");
@@ -388,17 +551,25 @@ async function delProv(id){
   const p=PROV.find(x=>String(x.id)===String(id)); if(!p)return;
   if(!confirm(`¿Eliminar "${p.nombre}"?`))return;
   PROV=PROV.filter(x=>String(x.id)!==String(id));
-  await persist("Proveedor eliminado"); renderProv();
+  if(await persist("Proveedor eliminado")){ renderProv(); syncCatIds(id, null); }
 }
-document.getElementById("addBtn").onclick=()=>openEditor(null, PROV.reduce((m,p)=>Math.max(m,p.id||0),0)+1);
+document.getElementById("addBtn").onclick=()=>{
+  if(!provLoaded){ toast("Primero deben cargarse los proveedores (recarga la página).","err"); return; }
+  openEditor(null, PROV.reduce((m,p)=>Math.max(m,+p.id||0),0)+1);
+};
 document.getElementById("seedBtn").onclick=async()=>{
-  if(!confirm("Cargar/actualizar los 62 proveedores del Excel. ¿Continuar?"))return;
-  try{ await store.publishSeed(); await loadProv(); toast("Lista inicial cargada"); }catch(e){ toast("Error","err"); }
+  if(!confirm("Se agregarán los proveedores de la lista inicial (62) que falten.\nLos que ya existen NO se borran ni se modifican.\n\n¿Continuar?"))return;
+  try{
+    const n = await store.publishSeed(); await loadProv(); await loadSite();
+    toast(n>0 ? `Se agregaron ${n} proveedor${n!==1?"es":""} de la lista inicial` : "La lista ya estaba completa ✓");
+  }catch(e){ console.error(e); toast("No se pudo completar la lista. ¿Iniciaste sesión en la nube?","err"); }
 };
 async function persist(msg){
+  if(!provLoaded){ toast("No se guardó: los proveedores no se cargaron bien. Recarga la página.","err",6000); return false; }
   try{
     await store.saveProviders(PROV);
     toast(msg||"Guardado");
+    return true;
   }catch(e){
     const m=((e&&e.message)||"").toLowerCase();
     if(/maximum|exceeds|too large|size|invalid-argument/.test(m))
@@ -406,7 +577,33 @@ async function persist(msg){
     else
       toast("Error al guardar. ¿Iniciaste sesión en la nube?","err");
     console.error(e);
+    return false;
   }
+}
+// Mantiene las listas de proveedores de cada categoría al día cuando cambias la
+// categoría desde el editor (antes el proveedor "desaparecía" del catálogo).
+async function syncCatIds(id, catName){
+  if(!(SITE && SITE.catsManaged) || !catsList.length) return;
+  let changed=false;
+  catsList.forEach(c=>{
+    const before=(c.ids||[]).length;
+    c.ids=(c.ids||[]).filter(x=>String(x)!==String(id));
+    if(c.ids.length!==before) changed=true;
+  });
+  const target = catName ? catsList.find(c=>c.nombre===catName) : null;
+  if(target){ target.ids.push(+id); changed=true; }
+  if(changed){ await persistCats(false); renderCatList(); }
+}
+function fillCatSelect(list){
+  const sel=document.getElementById("f-categoria"); const cur=sel.value;
+  const names=(list||[]).map(c=>c.nombre).filter(Boolean);
+  if(!names.includes("Otros")) names.push("Otros");
+  sel.innerHTML = names.map(n=>`<option>${escapeHtml(n)}</option>`).join("");
+  if(cur && names.includes(cur)) sel.value=cur;
+}
+function catColorOf(name){
+  const c = (typeof catsList!=="undefined" && catsList.find(x=>x.nombre===name)) || CATEGORIAS.find(x=>x.nombre===name) || {};
+  return /^#[0-9a-f]{6}$/i.test(c.color||"") ? c.color : "#1877E6";
 }
 
 // Editor
@@ -418,6 +615,7 @@ function openEditor(id,newId){
   document.getElementById("edTitle").textContent = id!=null?"Editar proveedor":"Nuevo proveedor";
   document.getElementById("f-id").value=p.id;
   ["nombre","giro","descripcion","contacto","whatsapp","telContacto","telNegocio","instagram","facebook","web","badge"].forEach(k=>F(k).value=p[k]||"");
+  if(p.categoria && ![...F("categoria").options].some(o=>o.value===p.categoria)) F("categoria").insertAdjacentHTML("beforeend", `<option>${escapeHtml(p.categoria)}</option>`);
   F("categoria").value=p.categoria||"Otros";
   F("destacado").checked=!!p.destacado;
   logoData = p.logo||""; F("logo").value = (logoData && !logoData.startsWith("data:")) ? logoData : ""; renderEdLogo();
@@ -428,7 +626,7 @@ function openEditor(id,newId){
 function renderEdLogo(){
   const src = logoData || F("logo").value.trim();
   document.getElementById("edLogoPrev").innerHTML = src
-    ? `<img src="${src}" style="width:100%;height:100%;object-fit:contain">`
+    ? `<img src="${escapeHtml(src)}" style="width:100%;height:100%;object-fit:contain">`
     : `<span style="color:var(--muted);font-size:.62rem">Sin logo</span>`;
 }
 document.getElementById("edLogoFile").onchange=async e=>{ const f=e.target.files[0]; if(!f)return; const v=await uploadImageFile(f); if(v){ logoData=v; F("logo").value=""; renderEdLogo(); } e.target.value=""; };
@@ -479,12 +677,17 @@ document.getElementById("edSave").onclick=async()=>{
   const id=+document.getElementById("f-id").value;
   const nombre=F("nombre").value.trim(); if(!nombre){ toast("El nombre es obligatorio","err"); return; }
   const cat=F("categoria").value;
-  const color=(CATEGORIAS.find(c=>c.nombre===cat)||{}).color||"#1877E6";
+  const color=catColorOf(cat);
   const obj={id,nombre,categoria:cat,color,destacado:F("destacado").checked,fotos:photos,videos:videos,video:"",logo:(logoData || F("logo").value.trim())};
   ["giro","descripcion","contacto","whatsapp","telContacto","telNegocio","instagram","facebook","web","badge"].forEach(k=>obj[k]=F(k).value.trim());
-  const i=PROV.findIndex(x=>x.id===id);
+  obj.whatsapp = obj.whatsapp.replace(/[^\d]/g,"");
+  if(obj.whatsapp && obj.whatsapp.length===10) obj.whatsapp = "52"+obj.whatsapp; // número local → con lada de México
+  const i=PROV.findIndex(x=>String(x.id)===String(id));
   if(i>=0) PROV[i]=Object.assign(PROV[i],obj); else PROV.push(obj);
-  await persist("Proveedor guardado"); renderProv(); closeEditor();
+  const btn=document.getElementById("edSave"); btn.disabled=true;
+  try{
+    if(await persist("Proveedor guardado")){ renderProv(); closeEditor(); await syncCatIds(id, cat); }
+  }finally{ btn.disabled=false; }
 };
 
 // ---------- Equipo ----------
@@ -509,26 +712,31 @@ document.getElementById("exportBtn").onclick=()=>{
   if(!EQ.length){ toast("Sin datos","err"); return; }
   const rows=[["Fecha","Nombre","Telefono","Giro","Mensaje"]];
   EQ.forEach(r=>rows.push([fdate(r.createdAt),r.nombre,r.telefono,r.giro,(r.mensaje||"").replace(/\n/g," ")]));
-  const csv=rows.map(r=>r.map(c=>`"${String(c||"").replace(/"/g,'""')}"`).join(",")).join("\n");
-  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"})); a.download="equipo_canirac.csv"; a.click();
+  downloadCsv(rows, "solicitudes_proveedores_canirac.csv");
 };
 function fdate(ts){ if(!ts)return""; const d=new Date(ts); return d.toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"})+" "+d.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"}); }
 
 // ---------- Cargar SITE (apariencia, categorías, slider, notificaciones) ----------
 async function loadSite(){
-  try{ SITE = await store.getSite(); }catch(e){ SITE = {}; }
+  try{ SITE = await store.getSite({ strict:true }); siteLoaded = true; }
+  catch(e){
+    console.error(e); SITE = {}; siteLoaded = false;
+    toast("No se pudo cargar la configuración del sitio. Recarga la página antes de editar.","err",7000);
+  }
   SITE.tema = SITE.tema || { primary:"", logo:"" };
   SITE.categorias = Array.isArray(SITE.categorias) ? SITE.categorias : [];
   SITE.slider = Array.isArray(SITE.slider) ? SITE.slider : [];
   SITE.notificaciones = Array.isArray(SITE.notificaciones) ? SITE.notificaciones : [];
   renderTema();
-  catNew(); seedCatsList(); renderCatList();
+  catNew(); seedCatsList(); renderCatList(); fillCatSelect(catsList);
   renderSlider();
   ntFillProv(); ntNew(); renderNtList();
 }
+// msg === false → guarda sin mostrar aviso
 async function saveSiteSafe(msg){
+  if(!siteLoaded){ toast("No se guardó: la configuración no se cargó bien. Recarga la página.","err",6000); return false; }
   try{
-    await store.saveSite(SITE); toast(msg||"Guardado"); return true;
+    await store.saveSite(SITE); if(msg!==false) toast(msg||"Guardado"); return true;
   }catch(e){
     const m=((e&&e.message)||"").toLowerCase();
     if(/maximum|exceeds|too large|size|invalid-argument/.test(m))
@@ -600,8 +808,9 @@ async function persistCats(msg){
   SITE.categorias = catsList.map(c=>({nombre:c.nombre, color:c.color||"#1877E6", emoji:c.emoji||"", imagen:c.imagen||"", ids:(c.ids||[]).map(Number)}));
   SITE.catsManaged = true;
   const changed = reconcileProvCats();
-  const ok = await saveSiteSafe(msg||"Categorías guardadas");
-  if(ok && changed){ try{ await store.saveProviders(PROV); renderProv(); }catch(e){ console.error(e); } }
+  const ok = await saveSiteSafe(msg===false ? false : (msg||"Categorías guardadas"));
+  if(ok && changed && provLoaded){ try{ await store.saveProviders(PROV); renderProv(); }catch(e){ console.error(e); } }
+  if(ok) fillCatSelect(catsList);
   return ok;
 }
 function reconcileProvCats(){

@@ -74,14 +74,39 @@ Proyecto ya conectado: **canirac-2f1a4** (consola: https://console.firebase.goog
 > Ningún usuario del catálogo puede modificar nada: las reglas solo permiten escribir al administrador.
 > Ya **no existe** la entrada como invitado.
 
-**Cómo funciona el acceso**
+**Cómo funciona el acceso (con 15 días de prueba)**
 1. La persona abre el catálogo → **Solicítalo aquí** → **Registrarme con Google**.
 2. Llena nombre completo, fecha de nacimiento, restaurante, puesto, y **crea y confirma su contraseña**.
-3. En el panel → **Autorizaciones de acceso** aparece como **Pendiente** (con un globo rojo en la pestaña).
-4. **Confirmar acceso** → su pantalla se abre sola y, desde entonces, entra con **correo + contraseña**
-   (o con Google). **Denegar acceso** → ve el aviso “Acceso no autorizado” y no puede leer el catálogo.
-5. Puedes cambiar la decisión cuando quieras; si retiras un acceso, se le cierra al instante.
-   **Eliminar** un registro le permite volver a solicitarlo.
+3. **Entra de inmediato** con **15 días de prueba** (ve una barra “te quedan N días”). Los días los cuenta
+   el servidor: nadie puede alargarlos.
+4. En el panel → **Autorizaciones de acceso** aparece como **Pendiente · En prueba (quedan N días)**,
+   con un globo rojo en la pestaña, y te llega una **notificación** (ver “Avisos de solicitudes” abajo).
+5. **Confirmar acceso** → su acceso queda **permanente** con **correo + contraseña** (o Google).
+   **Denegar acceso** → se le cierra el catálogo al instante, aunque siga en prueba.
+6. Si pasan los 15 días sin que decidas, la persona ve “Terminó tu periodo de prueba” hasta que la confirmes.
+7. Puedes cambiar la decisión cuando quieras. **Eliminar** un registro le permite volver a solicitarlo
+   (y empezar otra prueba).
+
+> Para cambiar los 15 días: `PRUEBA_DIAS` en `config.js` **y** el número 15 en `firestore.rules`
+> (función `enPrueba`, aparece dos veces).
+
+**Avisos de solicitudes al administrador**
+- **Sin instalar nada:** con el panel abierto (aunque esté en otra pestaña) verás un aviso por cada solicitud nueva.
+- **Aunque el panel esté cerrado (recomendado):** se publica una pequeña función de Firebase una sola vez,
+  desde una computadora con Node.js y `firebase-tools` (ver `GUIA-PUSH.md`, Parte 2):
+  ```
+  firebase use canirac-2f1a4
+  npm install --prefix functions-accesos
+  firebase deploy --only functions:accesos
+  ```
+  Esto **no** toca tu otra función de avisos. Después, en el panel → **Autorizaciones de acceso** →
+  **Activar** (en cada teléfono o computadora donde quieras recibirlos). En iPhone, primero instala el panel
+  como app y ábrelo desde el ícono.
+
+**Instalar como app (mini tutorial)**
+- Botón **📲 Cómo instalar la app** en la pantalla de inicio de sesión y en el menú (☰) del catálogo, y
+  **📲 Instalar app** en la barra del panel. Muestra los pasos para iPhone, Android y computadora, y en
+  Android/computadora incluye el botón **Instalar ahora**.
 
 **C. Almacenamiento de fotos y videos (Storage)** — *necesario para subir muchas fotos/videos*
 1. En la consola de Firebase entra a **Build → Storage** → **Comenzar / Get started**.
@@ -111,6 +136,18 @@ Authentication → Settings → **Authorized domains → Add domain**: agrega
    `canirac@caniraclaguna.mx` (o el usuario `canirac`) y tu contraseña.
 
 ---
+
+## Diseño, logo y fotos
+El color principal por defecto es el naranja CANIRAC **#EE7623** (se cambia en *Apariencia → Color principal*).
+- **Logo del inicio** (el de arriba del carrusel): *Apariencia → Logo del inicio*. Ajusta el **tamaño**
+  (40–220 px, con vista previa) y el **estilo**: blanco sin fondo (recomendado) o colores originales sin fondo.
+  Al bajar en el celular, el encabezado se compacta solo para dejar espacio.
+- Si subes un logo propio, se guarda en **PNG** para conservar la transparencia (sin fondo).
+- **Foto de cada categoría**: *Categorías* → editar → “Foto de la categoría”.
+- **Foto de portada y ubicación de cada proveedor**: *Proveedores* → editar.
+
+Si la app instalada se ve rara o desactualizada: menú ☰ → **Actualizar** (o jala la pantalla hacia abajo).
+En el panel: botón **↻ Actualizar** arriba.
 
 ## Cómo usar las funciones nuevas del panel
 

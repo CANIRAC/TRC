@@ -100,10 +100,32 @@ function paintStatic(){
   wireNav();
   wireSearch();
   wireModals();
+  wireRefresh();
+  wireCompactHeader();
+}
+
+// Copia local del catálogo (la guarda store.js cada vez que descarga de la nube).
+function readDataCache(){
+  try{
+    const prov = JSON.parse(localStorage.getItem("canirac_providers_v1"));
+    const site = JSON.parse(localStorage.getItem("canirac_site_v1"));
+    return (Array.isArray(prov) && prov.length) ? { prov, site: site || {} } : null;
+  }catch(e){ return null; }
 }
 
 async function start(){
-  showGate("checking");
+  // Arranque instantáneo: si esta persona ya tenía acceso en este dispositivo,
+  // se muestra de inmediato la última copia del catálogo mientras se verifica
+  // la sesión y se descargan los datos nuevos en segundo plano.
+  const cachedAccess = readAccessCache(), cachedData = readDataCache();
+  if(cachedAccess && cachedData){
+    safe(showCatalog, cachedData.prov, cachedData.site);
+    updateSessionUI(null);
+    hideGate();
+    loader.done();
+  } else {
+    showGate("checking");
+  }
   loader.set(25, "Conectando…");
   let mode = "local";
   try{ mode = await storeInit(); }catch(e){ mode = "local"; }
@@ -405,26 +427,14 @@ async function enterApp(user, { offline=false } = {}){
   if(entered) return;
   entered = true;
   if(user) writeAccessCache(user);
-  loader.show("Cargando proveedores…", 70);
+  if(!catalogShown) loader.show("Cargando proveedores…", 70);
   hideGate();
   updateSessionUI(user);
   paintTrial();
   // Failsafe: aunque algo falle o la red tarde, nunca dejar la barra de carga atorada.
   const failsafe = setTimeout(hideLoading, 12000);
   try{
-    try { PROV = await getProviders(); } catch(e){ PROV = []; }
-    PROV = (PROV||[]).map(p=>Object.assign({fotos:[],descripcion:"",badge:"",promo:"",destacado:false,categoria:"Otros",color:"#1877E6",video:"",videos:[],logo:""},p));
-    loader.set(88, "Preparando categorías…");
-    try { SITE = await getSite(); } catch(e){ SITE = {}; }
-    loader.set(96, "¡Listo!");
-
-    safe(renderMarquee, SITE && SITE.slider);
-    safe(renderCategorias);
-    safe(renderDestacados);
-    safe(renderContacto);
-    safe(renderNotifs);
-    safe(renderRecent);
-    safe(applyTheme, SITE);
+    await loadData();
     if(user && !offline){
       syncUser();               // favoritos e historial de la cuenta
       refreshPushIfEnabled();   // si ya dio permiso, vuelve a guardar su token (auto-repara)
@@ -465,6 +475,87 @@ function watchRevocation(user){
 function safe(fn, ...args){ try{ return fn(...args); }catch(e){ console.error("[CANIRAC] Error en "+((fn&&fn.name)||"render")+":", e); } }
 function hideLoading(){ loader.done("¡Listo!"); }
 
+// Descarga proveedores y configuración AL MISMO TIEMPO (antes iba uno tras otro).
+async function loadData(){
+  const [prov, site] = await Promise.all([
+    getProviders().catch(()=>[]),
+    getSite().catch(()=>({}))
+  ]);
+  loader.set(94, "Preparando catálogo…");
+  showCatalog(prov, site);
+}
+let catalogShown = false;
+// Pinta todo el catálogo con los datos dados (también al actualizar).
+function showCatalog(prov, site){
+  PROV = (prov||[]).map(p=>Object.assign({fotos:[],descripcion:"",badge:"",promo:"",destacado:false,categoria:"Otros",color:"#00758D",video:"",videos:[],logo:"",portada:"",ubicacion:""},p));
+  SITE = site || {};
+  safe(applyTheme, SITE);
+  safe(renderMarquee, SITE.slider);
+  safe(renderCategorias);
+  safe(renderDestacados);
+  safe(renderContacto);
+  safe(renderAbout);
+  safe(renderNotifs);
+  safe(renderRecent);
+  // Si está viendo una lista o una búsqueda, se actualiza sin moverlo de lugar.
+  const y = window.scrollY;
+  if(curNav!=="inicio") safe(render, curNav, { keepScroll:true });
+  const inp = document.getElementById("searchInput");
+  if(inp && inp.value.trim()) inp.dispatchEvent(new Event("input"));
+  if(catalogShown) window.scrollTo({ top:y, behavior:"instant" });
+  catalogShown = true;
+}
+
+// ---------- Actualizar ----------
+let refreshing = false, hiddenAt = 0;
+async function refreshData(){
+  if(refreshing || !entered) return;
+  refreshing = true;
+  try{ await loadData(); }
+  catch(e){ console.warn("[CANIRAC] refresh:", e); }
+  finally{ refreshing = false; }
+}
+// Encabezado compacto al bajar (con margen para que no "parpadee" en el límite)
+function wireCompactHeader(){
+  let on = false;
+  window.addEventListener("scroll", ()=>{
+    const y = window.scrollY;
+    if(!on && y > 90){ on = true; document.body.classList.add("scrolled"); }
+    else if(on && y < 12){ on = false; document.body.classList.remove("scrolled"); }
+  }, { passive:true });
+}
+function isStandalone(){ return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true; }
+function wireRefresh(){
+  // Botón "Actualizar" del menú: recarga completa (arregla cualquier pantalla trabada).
+  document.querySelectorAll("[data-refresh]").forEach(b=>b.addEventListener("click", ()=>{ closeAllOverlays(); location.reload(); }));
+  // Al volver a la app después de un rato, trae los datos nuevos sin recargar.
+  document.addEventListener("visibilitychange", ()=>{
+    if(document.hidden){ hiddenAt = Date.now(); return; }
+    if(hiddenAt && Date.now() - hiddenAt > 5*60*1000) refreshData();
+  });
+  // Jalar hacia abajo para actualizar (solo en la app instalada: el navegador ya lo tiene).
+  const ptr = document.getElementById("ptr");
+  let y0 = null, pull = 0;
+  window.addEventListener("touchstart", e=>{
+    if(!isStandalone() || window.scrollY > 0 || e.touches.length !== 1) { y0 = null; return; }
+    if(document.body.classList.contains("locked") || OVERLAYS.some(isOpen)) { y0 = null; return; }
+    y0 = e.touches[0].clientY; pull = 0;
+  }, { passive:true });
+  window.addEventListener("touchmove", e=>{
+    if(y0===null) return;
+    pull = Math.max(0, Math.min(110, (e.touches[0].clientY - y0) * .5));
+    if(window.scrollY > 0) pull = 0;
+    ptr.style.opacity = pull > 10 ? Math.min(1, pull/70) : 0;
+    ptr.style.transform = `translate(-50%, ${pull - 60}px) rotate(${pull*3}deg)`;
+  }, { passive:true });
+  window.addEventListener("touchend", ()=>{
+    if(y0===null) return;
+    y0 = null;
+    if(pull >= 70){ ptr.classList.add("spin"); ptr.style.transform = "translate(-50%, 16px)"; location.reload(); }
+    else { ptr.style.opacity = 0; ptr.style.transform = "translate(-50%,-60px)"; }
+  });
+}
+
 // ---------- Sesión (menú lateral + encabezado) ----------
 async function syncUser(){
   const u = currentUser();
@@ -501,18 +592,37 @@ function updateSessionUI(u){
   document.getElementById("sessLogout").onclick = doLogout;
 }
 
-// ---------- Apariencia (color y logo configurables desde admin) ----------
+// ---------- Apariencia (color y logo configurables desde el admin) ----------
+// Se guarda en el teléfono y el <head> lo aplica ANTES de pintar la página:
+// así la app ya no aparece azul (u otro color) mientras termina de cargar.
+const THEME_KEY = "canirac_theme_v2";
+const ORANGE = "#EE7623"; // naranja CANIRAC (color por defecto)
 function applyTheme(site){
   const t = (site && site.tema) || {};
-  if(t.primary && /^#[0-9a-f]{6}$/i.test(t.primary)) setPrimary(t.primary);
-  if(t.logo && safeUrl(t.logo)) setLogo(safeUrl(t.logo));
+  const primary = /^#[0-9a-f]{6}$/i.test(t.primary||"") ? t.primary : ORANGE;
+  setPrimary(primary);
+  const logo = safeUrl(t.logo);
+  if(logo) setLogo(logo);
+  // Logo del encabezado: tamaño y estilo (blanco sin fondo / colores originales)
+  const logoH = Math.max(40, Math.min(220, parseInt(t.logoH,10) || 100));
+  const logoStyle = t.logoStyle === "original" ? "original" : "blanco";
+  const r = document.documentElement.style;
+  r.setProperty("--logo-h", logoH + "px");
+  r.setProperty("--logo-filter", logoStyle === "original" ? "none" : "brightness(0) invert(1)");
+  try{
+    localStorage.setItem(THEME_KEY, JSON.stringify({
+      primary, primaryD: shade(primary,-30), primaryL: shade(primary,30), grad: gradOf(primary),
+      logoH, logoStyle
+    }));
+  }catch(e){}
 }
+function gradOf(c){ return `linear-gradient(160deg, ${shade(c,16)} 0%, ${shade(c,-20)} 100%)`; }
 function setPrimary(c){
   const r = document.documentElement.style;
   r.setProperty("--primary", c);
   r.setProperty("--primary-d", shade(c,-30));
   r.setProperty("--primary-l", shade(c,30));
-  r.setProperty("--grad", `linear-gradient(160deg, ${shade(c,16)} 0%, ${shade(c,-20)} 100%)`);
+  r.setProperty("--grad", gradOf(c));
   const meta = document.querySelector('meta[name="theme-color"]'); if(meta) meta.content = c;
 }
 function setLogo(url){
@@ -652,31 +762,31 @@ function closeDrawer(){ closeOverlay("drawer"); }
 // ============================================================
 const views = ["inicio","categorias","lista","contacto"];
 let curNav = "inicio";
-function showView(v){
+function showView(v, keepScroll){
   views.forEach(x=>document.getElementById("view-"+x).classList.toggle("hidden", x!==v));
-  window.scrollTo({top:0,behavior:"instant"});
+  if(!keepScroll) window.scrollTo({top:0,behavior:"instant"});
 }
 function setActive(active){
   document.querySelectorAll(".bnav,.top-nav a,.drawer-menu a[data-nav]").forEach(b=>b.classList.toggle("active", b.dataset.nav===active));
 }
 // Dibuja la vista pedida (sin tocar el historial).
-function render(nav){
+function render(nav, { keepScroll=false } = {}){
   curNav = nav;
   if(nav.startsWith("cat:")){
     const cats = getAllCats(); const cat = cats[+nav.slice(4)];
     if(!cat) return render("categorias");
     const list = catProviders(cat);
-    openList(cat.nombre, plural(list.length,"proveedor"), list);
+    openList(cat.nombre, plural(list.length,"proveedor"), list, "", keepScroll);
     setActive("categorias"); return;
   }
   switch(nav){
-    case "categorias": showView("categorias"); setActive("categorias"); break;
-    case "contacto": showView("contacto"); setActive("contacto"); break;
-    case "todos": openList("Todos los proveedores", "", PROV); setActive(""); break;
-    case "favoritos": openList("Favoritos", "Tus proveedores guardados", PROV.filter(p=>isFav(p.id)), "Aún no tienes favoritos. Toca el ♥ de un proveedor para guardarlo aquí."); setActive("favoritos"); break;
-    case "destacados": openList("Proveedores destacados", "", PROV.filter(p=>p.destacado)); setActive("destacados"); break;
-    case "promociones": openList("Promociones", "Proveedores con ofertas", PROV.filter(p=>p.promo || /%/.test(p.badge))); setActive("promociones"); break;
-    default: curNav="inicio"; resetHomeSearch(); showView("inicio"); setActive("inicio");
+    case "categorias": showView("categorias", keepScroll); setActive("categorias"); break;
+    case "contacto": showView("contacto", keepScroll); setActive("contacto"); break;
+    case "todos": openList("Todos los proveedores", "", PROV, "", keepScroll); setActive("todos"); break;
+    case "favoritos": openList("Favoritos", "Tus proveedores guardados", PROV.filter(p=>isFav(p.id)), "Aún no tienes favoritos. Toca el ♥ de un proveedor para guardarlo aquí.", keepScroll); setActive("favoritos"); break;
+    case "destacados": openList("Proveedores destacados", "", PROV.filter(p=>p.destacado), "", keepScroll); setActive("destacados"); break;
+    case "promociones": openList("Promociones", "Proveedores con ofertas", PROV.filter(p=>p.promo || /%/.test(p.badge)), "", keepScroll); setActive("promociones"); break;
+    default: curNav="inicio"; if(!keepScroll) resetHomeSearch(); showView("inicio", keepScroll); setActive("inicio");
   }
 }
 // Navega y registra el paso en el historial.
@@ -723,16 +833,19 @@ function catProviders(cat){
   if (Array.isArray(cat.ids)) { const set = new Set(cat.ids.map(String)); return PROV.filter(p=>set.has(String(p.id))); }
   return PROV.filter(p=>p.categoria===cat.nombre);
 }
+// El azul era el color por defecto anterior: se muestra con el teal CANIRAC.
+function brandColor(c){ return /^#1877e6$/i.test(String(c||"").trim()) ? "#00758D" : safeColor(c, "#00758D"); }
+function catByName(name){ return getAllCats().find(c=>c.nombre===name) || CATEGORIAS.find(c=>c.nombre===name) || {}; }
 function catVisual(cat){
+  const icon = cat.emoji ? `<span class="cat-emoji">${escapeHtml(cat.emoji)}</span>` : (CATEGORY_ICONS[cat.nombre] || CATEGORY_ICONS["Otros"]);
   const img = safeUrl(cat.imagen);
-  if (img) return `<img class="cat-img" src="${escapeHtml(img)}" alt="" loading="lazy">`;
-  if (cat.emoji) return `<span class="cat-emoji">${escapeHtml(cat.emoji)}</span>`;
-  return CATEGORY_ICONS[cat.nombre] || CATEGORY_ICONS["Otros"];
+  // Si la foto no carga, se quita y queda el ícono (no un hueco en blanco)
+  return img ? `<img class="cat-img" src="${escapeHtml(img)}" alt="" loading="lazy" onerror="this.parentNode.classList.remove('has-img');this.replaceWith(document.createRange().createContextualFragment(this.dataset.fb||''))" data-fb="${escapeHtml(icon)}">` : icon;
 }
 function catCardHTML(cat, idx, showCount){
   const n = showCount ? catProviders(cat).length : 0;
   return `<button class="cat" data-ci="${idx}">
-    <span class="tile ${cat.imagen?'has-img':''}" style="color:${safeColor(cat.color)}">${catVisual(cat)}</span>
+    <span class="tile ${cat.imagen?'has-img':''}" style="color:${brandColor(cat.color)}">${catVisual(cat)}</span>
     <span class="lbl">${escapeHtml(cat.nombre)}</span>
     ${showCount?`<span class="cnt">${plural(n,"proveedor")}</span>`:""}
   </button>`;
@@ -759,13 +872,18 @@ function renderMarquee(images){
 // ============================================================
 //  DESTACADOS
 // ============================================================
+// Foto de portada del proveedor (desde el admin) → su primera foto
+function provCover(p){ return safeUrl(p.portada) || safeUrl(p.fotos && p.fotos[0]) || ""; }
 function destCardHTML(p){
-  const color = safeColor(p.color), logo = safeUrl(p.logo), foto = safeUrl(p.fotos && p.fotos[0]);
-  const media = logo
-    ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(p.nombre)}" loading="lazy" style="object-fit:contain;padding:16px;background:#fff">`
-    : foto
-      ? `<img src="${escapeHtml(foto)}" alt="${escapeHtml(p.nombre)}" loading="lazy">`
-      : `<div class="logo-fallback" style="opacity:.92">${catIcon(p.categoria).replace('<svg','<svg width="52" height="52"')}</div>`;
+  const color = brandColor(p.color), logo = safeUrl(p.logo), portada = safeUrl(p.portada), foto = safeUrl(p.fotos && p.fotos[0]);
+  const fallback = `<div class="logo-fallback" style="opacity:.92">${catIcon(p.categoria).replace('<svg','<svg width="52" height="52"')}</div>`;
+  const media = portada
+    ? `<img src="${escapeHtml(portada)}" alt="${escapeHtml(p.nombre)}" loading="lazy">`
+    : logo
+      ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(p.nombre)}" loading="lazy" style="object-fit:contain;padding:16px;background:#fff">`
+      : foto
+        ? `<img src="${escapeHtml(foto)}" alt="${escapeHtml(p.nombre)}" loading="lazy">`
+        : fallback;
   const badge = p.badge
     ? `<span class="dest-badge ${/%/.test(p.badge)?"":"member"}">${/%/.test(p.badge)?"":ICONS.starFilled}${escapeHtml(p.badge)}</span>`
     : "";
@@ -796,10 +914,10 @@ function renderDestacados(){
 function cardsHTML(list, emptyMsg){
   if(!list.length) return `<div class="empty">${ICONS.search}<div>${escapeHtml(emptyMsg || "No se encontraron proveedores.")}</div></div>`;
   return list.slice().sort((a,b)=>(a.nombre||"").localeCompare(b.nombre||"","es")).map(p=>{
-    const logo = safeUrl(p.logo), foto = safeUrl(p.fotos && p.fotos[0]);
+    const logo = safeUrl(p.logo), foto = provCover(p);
     return `
       <article class="p-card" data-id="${escapeHtml(p.id)}">
-        <div class="p-thumb" style="background:${logo?'#fff':safeColor(p.color)}">${logo?`<img src="${escapeHtml(logo)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;border-radius:13px;padding:5px">`:(foto?`<img src="${escapeHtml(foto)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:13px">`:escapeHtml(initials(p.nombre)))}</div>
+        <div class="p-thumb" style="background:${logo?'#fff':brandColor(p.color)}">${logo?`<img src="${escapeHtml(logo)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:contain;border-radius:13px;padding:5px">`:(foto?`<img src="${escapeHtml(foto)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:13px">`:escapeHtml(initials(p.nombre)))}</div>
         <div class="p-info">
           <div class="nm">${escapeHtml(p.nombre)}</div>
           <div class="gr">${escapeHtml(p.giro||"")}</div>
@@ -808,13 +926,13 @@ function cardsHTML(list, emptyMsg){
         <button class="fav-btn ${isFav(p.id)?"on":""}" data-fav="${escapeHtml(p.id)}" aria-label="Favorito">${isFav(p.id)?ICONS.heartFilled:ICONS.heart}</button>
       </article>`;}).join("");
 }
-function openList(title, sub, list, emptyMsg){
+function openList(title, sub, list, emptyMsg, keepScroll){
   document.getElementById("listTitle").textContent = title;
   document.getElementById("listSub").textContent = sub || plural(list.length,"proveedor");
   const grid = document.getElementById("listGrid");
   grid.innerHTML = cardsHTML(list, emptyMsg);
   wireCardEvents(grid);
-  showView("lista");
+  showView("lista", keepScroll);
 }
 
 function wireCardEvents(root){
@@ -827,7 +945,7 @@ function wireCardEvents(root){
   }));
   root.querySelectorAll("[data-id]").forEach(el=>el.addEventListener("click", e=>{
     if(e.target.closest("[data-fav]")) return;
-    if(el.classList.contains("btn-see")) e.stopPropagation();
+    if(el.classList.contains("btn-see")) e.stopPropagation(); // evita abrir la ficha dos veces
     openModal(el.dataset.id);
   }));
 }
@@ -851,21 +969,35 @@ function wireSearch(){
   const sections = document.getElementById("homeSections");
   const clr = document.getElementById("searchClear");
   let t;
+  const hs = document.getElementById("headerSearch");
+  // Lleva la vista a los resultados (en computadora quedan bajo la portada)
+  const showResults = ()=>{ if(inp.value.trim()) setTimeout(()=>{ const r=document.getElementById("homeResults"); if(r.style.display!=="none") r.scrollIntoView({behavior:"smooth", block:"start"}); }, 200); };
   // Guarda la búsqueda en el historial cuando el usuario termina de escribir
   inp.addEventListener("change", ()=>{ addRecent(inp.value); });
-  inp.addEventListener("keydown", e=>{ if(e.key==="Enter"){ addRecent(inp.value); inp.blur(); } });
-  clr.addEventListener("click", ()=>{ resetHomeSearch(); inp.focus(); });
+  inp.addEventListener("keydown", e=>{ if(e.key==="Enter"){ addRecent(inp.value); inp.blur(); showResults(); } });
+  const sf = document.getElementById("searchForm");
+  if(sf) sf.addEventListener("submit", e=>{ e.preventDefault(); addRecent(inp.value); inp.blur(); showResults(); });
+  clr.addEventListener("click", ()=>{ resetHomeSearch(); if(hs) hs.value=""; inp.focus(); });
+  // Buscador del encabezado (computadora): escribe en el buscador principal
+  if(hs){
+    hs.addEventListener("input", ()=>{
+      if(curNav!=="inicio") go("inicio");
+      inp.value = hs.value; inp.dispatchEvent(new Event("input"));
+    });
+    hs.addEventListener("keydown", e=>{ if(e.key==="Enter"){ addRecent(hs.value); showResults(); } });
+  }
   inp.addEventListener("input", ()=>{
     clearTimeout(t);
     const raw = inp.value.trim();
     const q = norm(raw);
+    if(hs && document.activeElement!==hs) hs.value = inp.value;
     clr.classList.toggle("hidden", !inp.value);
     if(!q){ results.style.display="none"; results.innerHTML=""; sections.style.display=""; renderRecent(); return; }
     renderRecent();
     t = setTimeout(()=>{
       const terms = q.split(/\s+/);
       const res = PROV.filter(p=>{
-        const hay = norm([p.nombre,p.giro,p.categoria,p.contacto,p.descripcion].join(" "));
+        const hay = norm([p.nombre,p.giro,p.categoria,p.contacto,p.descripcion,p.ubicacion].join(" "));
         return terms.every(tm=>hay.includes(tm));
       });
       sections.style.display = "none";
@@ -884,8 +1016,13 @@ function wireSearch(){
 function openModal(id){
   const p = PROV.find(x=>String(x.id)===String(id));
   if(!p) return;
-  const color = safeColor(p.color);
-  document.getElementById("pmHead").style.background = `linear-gradient(150deg, ${color}, ${shade(color,-25)})`;
+  // Encabezado de la ficha: su foto de portada (si tiene) o el color del proveedor
+  const head = document.getElementById("pmHead"), color = brandColor(p.color), cover = safeUrl(p.portada);
+  head.style.background = cover
+    ? `linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.65)), url("${cover.replace(/"/g,"%22")}") center/cover`
+    : `linear-gradient(150deg, ${color}, ${shade(color,-25)})`;
+  head.style.minHeight = cover ? "180px" : "";
+  head.style.justifyContent = cover ? "flex-end" : "";
   document.getElementById("pmCat").textContent = p.categoria || "Proveedor";
   document.getElementById("pmName").textContent = p.nombre;
 
@@ -897,6 +1034,7 @@ function openModal(id){
     rows.push(row("Teléfono", first ? `<a class="m-tel" href="tel:${escapeHtml(first)}">${escapeHtml(tel)}</a>` : escapeHtml(tel)));
   }
   if(p.giro) rows.push(row("Giro", escapeHtml(p.giro)));
+  if(p.ubicacion) rows.push(row("Ubicación", escapeHtml(p.ubicacion)));
 
   const social=[];
   const ig=safeUrl(p.instagram), fb=safeUrl(p.facebook), web=safeUrl(p.web);
@@ -1034,6 +1172,11 @@ function renderFooter(){
       </div>
     </div>
     <div class="af-copy">© ${new Date().getFullYear()} CANIRAC Laguna · Catálogo de Proveedores</div>`;
+}
+function renderAbout(){
+  const d = (SITE && SITE.contacto) || {};
+  const el = document.getElementById("aboutTxt");
+  if(el && d.descripcion) el.textContent = d.descripcion;
 }
 function renderContacto(){
   const d = (SITE && SITE.contacto) || {};

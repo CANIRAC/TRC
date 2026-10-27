@@ -47,6 +47,8 @@ export const ICONS = {
   menu: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>`,
   bell: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>`,
   close: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`,
+  refresh: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>`,
+  arrowR: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>`,
   home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>`,
   grid: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>`,
   heart: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 6.6a5 5 0 0 0-8.8-2.2A5 5 0 0 0 3.2 6.6c0 4.6 8.8 10.4 8.8 10.4s8.8-5.8 8.8-10.4z"/></svg>`,
@@ -109,7 +111,7 @@ export function safeUrl(u) {
 }
 
 // Color hexadecimal seguro para usar dentro de style="…".
-export function safeColor(c, fallback = "#1877E6") {
+export function safeColor(c, fallback = "#00758D") {
   return /^#[0-9a-f]{3,8}$/i.test(String(c || "").trim()) ? String(c).trim() : fallback;
 }
 
@@ -146,7 +148,10 @@ export function createLoader() {
   };
   run(); paint();
   return {
-    set(p, text) { target = Math.max(target, p); if (text) txt.textContent = text; run(); },
+    set(p, text) {
+      if (finishing || el.style.display === "none") return; // ya se ocultó: no gastar recursos
+      target = Math.max(target, p); if (text) txt.textContent = text; run();
+    },
     show(text, p = 5) {
       // Si ya está a la vista (carga inicial), solo avanza.
       if (!finishing && el.style.display !== "none" && !el.classList.contains("gone")) { this.set(p, text); return; }

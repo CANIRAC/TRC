@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Administración — CANIRAC Laguna</title>
-<meta name="theme-color" content="#1877E6">
+<meta name="theme-color" content="#EE7623">
 <meta name="robots" content="noindex, nofollow">
 <meta name="format-detection" content="telephone=no">
 <link rel="icon" href="logoapp.png" type="image/png">
@@ -54,6 +54,7 @@
         <span class="pill" id="modePill"></span>
         <button class="btn-w ghost" data-pwa-install>📲 Instalar app</button>
         <a class="btn-w ghost" href="index.html" target="_blank" rel="noopener">Ver sitio ↗</a>
+        <button class="btn-w ghost" id="refreshBtnTop" title="Recarga el panel con los datos más nuevos">↻ Actualizar</button>
         <button class="btn-w" id="logoutBtn">Salir</button>
       </div>
     </div>
@@ -135,8 +136,8 @@
           <div class="field"><label>Emoji (opcional)</label><input id="cat-emoji" placeholder="🎉" maxlength="4"></div>
         </div>
         <div class="row-2">
-          <div class="field"><label>Color</label><input type="color" id="cat-color" value="#1877E6" style="height:44px;width:70px;padding:2px;border-radius:10px;border:1.5px solid var(--line);background:#fff"></div>
-          <div class="field"><label>Imagen (opcional, reemplaza el emoji)</label>
+          <div class="field"><label>Color</label><input type="color" id="cat-color" value="#00758D" style="height:44px;width:70px;padding:2px;border-radius:10px;border:1.5px solid var(--line);background:#fff"></div>
+          <div class="field"><label>Foto de la categoría (aparece en el catálogo; reemplaza el emoji)</label>
             <div style="display:flex;gap:.5rem;align-items:center">
               <div id="catImgPrev" style="width:44px;height:44px;border-radius:10px;background:var(--soft);border:1px solid var(--line);overflow:hidden;flex:0 0 auto"></div>
               <label class="btn-soft" style="margin:0">Subir…<input type="file" id="cat-img-file" accept="image/*" hidden></label>
@@ -205,13 +206,31 @@
 
     <!-- APARIENCIA -->
     <section class="apanel" id="p-tema">
-      <div class="hint">Personaliza el <b>color principal</b> y el <b>logo</b> del sitio. Al guardar, recarga el sitio para ver los cambios.</div>
-      <div style="background:#fff;border:1px solid var(--line);border-radius:16px;padding:1.4rem;max-width:540px">
+      <div class="hint">Personaliza el <b>logo del inicio</b> (tamaño y estilo), el <b>color principal</b> y el <b>logo</b>. Los cambios aparecen en el catálogo la próxima vez que se abra (o con el botón <b>Actualizar</b> del menú).</div>
+      <div class="panel-card">
+        <h3>Logo del inicio (arriba del carrusel)</h3>
+        <div class="logo-preview" id="lg-preview"><span class="brand on-dark"><span class="brand-chip"><img class="brand-img" id="lg-img" src="logo.png" alt="Vista previa del logo"></span></span></div>
         <div class="field">
-          <label>Color principal</label>
+          <label>Tamaño del logo</label>
+          <div class="range-row"><input type="range" id="lg-size" min="40" max="220" step="2" value="100"><b id="lg-size-v">100 px</b></div>
+          <small class="help">En computadora se muestra un poco más chico para que el menú quepa en una sola línea.</small>
+        </div>
+        <div class="field">
+          <label>Estilo del logo</label>
+          <select id="lg-style">
+            <option value="blanco">Blanco, sin fondo (recomendado)</option>
+            <option value="original">Colores originales, sin fondo</option>
+          </select>
+        </div>
+        <button class="btn-primary" id="lg-save" style="max-width:240px">Guardar logo</button>
+      </div>
+      <div class="panel-card">
+        <h3>Color y logo</h3>
+        <div class="field">
+          <label>Color principal (encabezado y botones). Vacío = naranja CANIRAC</label>
           <div style="display:flex;gap:.7rem;align-items:center">
             <input type="color" id="th-color" style="width:56px;height:46px;padding:2px;border-radius:10px;border:1.5px solid var(--line);background:#fff">
-            <input id="th-color-hex" style="max-width:140px" placeholder="#1877E6">
+            <input id="th-color-hex" style="max-width:140px" placeholder="#EE7623 (naranja CANIRAC)">
             <button class="btn-soft" id="th-reset" type="button">Restablecer</button>
           </div>
         </div>
@@ -259,6 +278,17 @@
     <div class="field"><label>Instagram (URL)</label><input id="f-instagram" placeholder="https://instagram.com/…"></div>
     <div class="field"><label>Facebook (URL)</label><input id="f-facebook" placeholder="https://facebook.com/…"></div>
     <div class="field"><label>Sitio web (URL)</label><input id="f-web" placeholder="https://…"></div>
+    <div class="field"><label>Ubicación (aparece en la tarjeta)</label><input id="f-ubicacion" placeholder="Ej: Torreón, Coahuila"></div>
+    <div class="field">
+      <label>Foto de portada (la foto grande de su tarjeta y de su ficha)</label>
+      <div class="img-pick">
+        <div class="img-prev wide" id="edCoverPrev"></div>
+        <label class="btn-soft" style="margin:0">Subir foto…<input type="file" id="edCoverFile" accept="image/*" hidden></label>
+        <button class="btn-soft" id="edCoverClear" type="button">Quitar</button>
+      </div>
+      <input id="f-portada" placeholder="…o pega la URL de la foto">
+      <small class="help">Si no pones portada, se usa su primera foto o la foto de su categoría.</small>
+    </div>
     <div class="field">
       <label>Logo del proveedor</label>
       <div style="display:flex;gap:1rem;align-items:center;margin-bottom:.5rem">
@@ -347,6 +377,7 @@ function friendly(err){
   return (err&&err.message)||"No se pudo iniciar sesión.";
 }
 document.getElementById("logoutBtn").onclick=async()=>{ await store.adminLogout(); location.reload(); };
+document.getElementById("refreshBtnTop").onclick=()=>location.reload();
 
 async function showAdmin(){
   if(adminShown) return;   // onAuthStateChanged y el formulario pueden llamarlo dos veces
@@ -538,10 +569,12 @@ function downloadCsv(rows, name){
 // Sube una imagen. SIEMPRE la convierte a JPG primero (así se ve en cualquier
 // dispositivo; las fotos de iPhone en HEIC no se muestran tal cual). Devuelve la
 // URL (o una copia local si Storage falla), o null si la imagen no se pudo leer.
-async function uploadImageFile(file){
+// opts.png = true → se guarda en PNG para conservar la transparencia (logos sin fondo).
+async function uploadImageFile(file, opts={}){
   let conv;
+  const type = opts.png ? "image/png" : "image/jpeg";
   try{
-    conv = await compressToBlob(file, 1600, 0.82);
+    conv = await compressToBlob(file, opts.png ? 1000 : 1600, 0.82, type);
   }catch(e){
     console.warn("No se pudo leer la imagen:", e);
     toast("No se pudo leer esa foto. Si es de iPhone (HEIC), súbela DESDE el iPhone o pásala a JPG.","err",6500);
@@ -551,8 +584,8 @@ async function uploadImageFile(file){
     toast("Subiendo foto…");
     try{
       const base = ((file.name||"foto").replace(/\.[^.]+$/,"")) || "foto";
-      const jpg = new File([conv.blob], base+".jpg", { type:"image/jpeg" });
-      const url = await store.uploadFile(jpg, "fotos"); // subida directa de un JPG pequeño
+      const jpg = new File([conv.blob], base+(opts.png?".png":".jpg"), { type });
+      const url = await store.uploadFile(jpg, "fotos"); // subida directa de una imagen pequeña
       toast("Foto lista ✓");
       return url;
     }catch(e){
@@ -670,18 +703,19 @@ function fillCatSelect(list){
 }
 function catColorOf(name){
   const c = (typeof catsList!=="undefined" && catsList.find(x=>x.nombre===name)) || CATEGORIAS.find(x=>x.nombre===name) || {};
-  return /^#[0-9a-f]{6}$/i.test(c.color||"") ? c.color : "#1877E6";
+  return /^#[0-9a-f]{6}$/i.test(c.color||"") ? c.color : "#00758D";
 }
 
 // Editor
 const editor=document.getElementById("editor"), edOv=document.getElementById("edOverlay");
-let photos=[], videos=[], logoData="";
+let photos=[], videos=[], logoData="", coverData="";
 const F=k=>document.getElementById("f-"+k);
 function openEditor(id,newId){
   const p = id!=null ? PROV.find(x=>String(x.id)===String(id)) : {id:newId,categoria:"Otros",fotos:[],videos:[]};
   document.getElementById("edTitle").textContent = id!=null?"Editar proveedor":"Nuevo proveedor";
   document.getElementById("f-id").value=p.id;
-  ["nombre","giro","descripcion","contacto","whatsapp","telContacto","telNegocio","instagram","facebook","web","badge"].forEach(k=>F(k).value=p[k]||"");
+  ["nombre","giro","descripcion","contacto","whatsapp","telContacto","telNegocio","instagram","facebook","web","badge","ubicacion"].forEach(k=>F(k).value=p[k]||"");
+  coverData = p.portada||""; F("portada").value = (coverData && !coverData.startsWith("data:")) ? coverData : ""; renderEdCover();
   if(p.categoria && ![...F("categoria").options].some(o=>o.value===p.categoria)) F("categoria").insertAdjacentHTML("beforeend", `<option>${escapeHtml(p.categoria)}</option>`);
   F("categoria").value=p.categoria||"Otros";
   F("destacado").checked=!!p.destacado;
@@ -696,9 +730,17 @@ function renderEdLogo(){
     ? `<img src="${escapeHtml(src)}" style="width:100%;height:100%;object-fit:contain">`
     : `<span style="color:var(--muted);font-size:.62rem">Sin logo</span>`;
 }
-document.getElementById("edLogoFile").onchange=async e=>{ const f=e.target.files[0]; if(!f)return; const v=await uploadImageFile(f); if(v){ logoData=v; F("logo").value=""; renderEdLogo(); } e.target.value=""; };
+document.getElementById("edLogoFile").onchange=async e=>{ const f=e.target.files[0]; if(!f)return; const v=await uploadImageFile(f, { png:true }); if(v){ logoData=v; F("logo").value=""; renderEdLogo(); } e.target.value=""; };
 document.getElementById("edLogoClear").onclick=()=>{ logoData=""; F("logo").value=""; renderEdLogo(); };
 document.getElementById("f-logo").oninput=renderEdLogo;
+// Foto de portada del proveedor
+function renderEdCover(){
+  const src = coverData || F("portada").value.trim();
+  document.getElementById("edCoverPrev").innerHTML = src ? `<img src="${escapeHtml(src)}" alt="">` : "Sin portada";
+}
+document.getElementById("edCoverFile").onchange=async e=>{ const f=e.target.files[0]; if(!f)return; const v=await uploadImageFile(f); if(v){ coverData=v; F("portada").value=""; renderEdCover(); toast("Portada lista (recuerda Guardar)"); } e.target.value=""; };
+document.getElementById("edCoverClear").onclick=()=>{ coverData=""; F("portada").value=""; renderEdCover(); };
+document.getElementById("f-portada").oninput=()=>{ coverData=""; renderEdCover(); };
 function closeEditor(){ editor.classList.remove("open"); edOv.classList.remove("open"); }
 document.getElementById("edClose").onclick=closeEditor;
 document.getElementById("edCancel").onclick=closeEditor;
@@ -745,8 +787,8 @@ document.getElementById("edSave").onclick=async()=>{
   const nombre=F("nombre").value.trim(); if(!nombre){ toast("El nombre es obligatorio","err"); return; }
   const cat=F("categoria").value;
   const color=catColorOf(cat);
-  const obj={id,nombre,categoria:cat,color,destacado:F("destacado").checked,fotos:photos,videos:videos,video:"",logo:(logoData || F("logo").value.trim())};
-  ["giro","descripcion","contacto","whatsapp","telContacto","telNegocio","instagram","facebook","web","badge"].forEach(k=>obj[k]=F(k).value.trim());
+  const obj={id,nombre,categoria:cat,color,destacado:F("destacado").checked,fotos:photos,videos:videos,video:"",logo:(logoData || F("logo").value.trim()),portada:(coverData || F("portada").value.trim())};
+  ["giro","descripcion","contacto","whatsapp","telContacto","telNegocio","instagram","facebook","web","badge","ubicacion"].forEach(k=>obj[k]=F(k).value.trim());
   obj.whatsapp = obj.whatsapp.replace(/[^\d]/g,"");
   if(obj.whatsapp && obj.whatsapp.length===10) obj.whatsapp = "52"+obj.whatsapp; // número local → con lada de México
   const i=PROV.findIndex(x=>String(x.id)===String(id));
@@ -840,7 +882,7 @@ function catNew(){
   document.getElementById("cat-idx").value = "-1";
   document.getElementById("catFormTitle").textContent = "Nueva categoría";
   ["nombre","emoji"].forEach(k=>document.getElementById("cat-"+k).value="");
-  document.getElementById("cat-color").value = "#1877E6";
+  document.getElementById("cat-color").value = "#00758D";
   catImg = ""; renderCatImg();
   document.getElementById("catProvSearch").value = "";
   renderCatProvList([]);
@@ -872,7 +914,7 @@ document.getElementById("catSave").onclick = async ()=>{
   if(await persistCats("Categoría guardada")){ renderCatList(); catNew(); }
 };
 async function persistCats(msg){
-  SITE.categorias = catsList.map(c=>({nombre:c.nombre, color:c.color||"#1877E6", emoji:c.emoji||"", imagen:c.imagen||"", ids:(c.ids||[]).map(Number)}));
+  SITE.categorias = catsList.map(c=>({nombre:c.nombre, color:c.color||"#00758D", emoji:c.emoji||"", imagen:c.imagen||"", ids:(c.ids||[]).map(Number)}));
   SITE.catsManaged = true;
   const changed = reconcileProvCats();
   const ok = await saveSiteSafe(msg===false ? false : (msg||"Categorías guardadas"));
@@ -894,7 +936,7 @@ function renderCatList(){
     const vis = c.imagen ? `<img src="${c.imagen}" style="width:100%;height:100%;object-fit:cover">`
       : (c.emoji ? `<span>${escapeHtml(c.emoji)}</span>` : icon);
     return `<div class="media-card">
-      <div style="height:96px;display:flex;align-items:center;justify-content:center;background:var(--soft);color:${c.color||'#1877E6'};font-size:2.2rem">${vis}</div>
+      <div style="height:96px;display:flex;align-items:center;justify-content:center;background:var(--soft);color:${c.color||'#00758D'};font-size:2.2rem">${vis}</div>
       <div class="mc-body"><span><b>${escapeHtml(c.nombre)}</b><br><span style="color:var(--muted);font-size:.8rem">${(c.ids||[]).length} prov.</span></span>
         <span style="display:flex;gap:.3rem">
           <button class="icon-btn" data-cedit="${i}">${ICONS.edit}</button>
@@ -912,7 +954,7 @@ function editCat(i){
   document.getElementById("catFormTitle").textContent = "Editar categoría";
   document.getElementById("cat-nombre").value = c.nombre||"";
   document.getElementById("cat-emoji").value = c.emoji||"";
-  document.getElementById("cat-color").value = /^#[0-9a-f]{6}$/i.test(c.color)?c.color:"#1877E6";
+  document.getElementById("cat-color").value = /^#[0-9a-f]{6}$/i.test(c.color)?c.color:"#00758D";
   catImg = c.imagen||""; renderCatImg();
   document.getElementById("catProvSearch").value = "";
   renderCatProvList((c.ids && c.ids.length) ? c.ids : PROV.filter(p=>p.categoria===c.nombre).map(p=>p.id));
@@ -1000,36 +1042,70 @@ document.getElementById("slFile").onchange = async e=>{
   e.target.value="";
 };
 
+// ---------- Logo del inicio: tamaño y estilo (con vista previa en vivo) ----------
+function paintLogoPreview(){
+  const size = +document.getElementById("lg-size").value;
+  const style = document.getElementById("lg-style").value;
+  const prev = document.getElementById("lg-preview"), img = document.getElementById("lg-img");
+  document.getElementById("lg-size-v").textContent = size + " px";
+  img.style.height = size + "px";
+  img.style.filter = style === "original" ? "none" : "brightness(0) invert(1)";
+  img.src = safeUrl(SITE.tema.logo) || "logo.png";
+  // Fondo de la vista previa = color principal, como en el catálogo
+  const hex = document.getElementById("th-color-hex").value.trim();
+  const c = /^#[0-9a-f]{6}$/i.test(hex) ? hex : "#EE7623";
+  prev.style.background = `linear-gradient(160deg, ${shadeHex(c,16)} 0%, ${shadeHex(c,-20)} 100%)`;
+}
+function shadeHex(hex, amt){
+  const h=hex.replace("#",""); let r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+  r=Math.max(0,Math.min(255,r+amt));g=Math.max(0,Math.min(255,g+amt));b=Math.max(0,Math.min(255,b+amt));
+  return "#"+[r,g,b].map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+function renderLogoCfg(){
+  const h = Math.max(40, Math.min(220, parseInt(SITE.tema.logoH,10) || 100));
+  document.getElementById("lg-size").value = h;
+  document.getElementById("lg-style").value = SITE.tema.logoStyle === "original" ? "original" : "blanco";
+  paintLogoPreview();
+}
+document.getElementById("lg-size").oninput = paintLogoPreview;
+document.getElementById("lg-style").onchange = paintLogoPreview;
+document.getElementById("lg-save").onclick = async ()=>{
+  SITE.tema.logoH = +document.getElementById("lg-size").value;
+  SITE.tema.logoStyle = document.getElementById("lg-style").value;
+  await saveSiteSafe("Logo guardado");
+};
+
 // ---------- Apariencia (color + logo) ----------
 function renderTema(){
-  const c = SITE.tema.primary || "#1877E6";
-  document.getElementById("th-color").value = /^#[0-9a-f]{6}$/i.test(c) ? c : "#1877E6";
+  const c = SITE.tema.primary || "#EE7623";
+  document.getElementById("th-color").value = /^#[0-9a-f]{6}$/i.test(c) ? c : "#EE7623";
   document.getElementById("th-color-hex").value = SITE.tema.primary || "";
   renderLogoPrev(SITE.tema.logo || "");
   const url = SITE.tema.logo || "";
   document.getElementById("th-logo-url").value = (url && !url.startsWith("data:")) ? url : "";
+  renderLogoCfg();
 }
 function renderLogoPrev(url){
   document.getElementById("th-logo-prev").innerHTML = url
-    ? `<img src="${url}" style="width:100%;height:100%;object-fit:contain">`
+    ? `<img src="${escapeHtml(url)}" style="width:100%;height:100%;object-fit:contain">`
     : `<span style="color:var(--muted);font-size:.68rem;text-align:center">Logo<br>actual</span>`;
 }
-document.getElementById("th-color").oninput = e=>{ document.getElementById("th-color-hex").value = e.target.value.toUpperCase(); };
-document.getElementById("th-color-hex").oninput = e=>{ const v=e.target.value.trim(); if(/^#[0-9a-f]{6}$/i.test(v)) document.getElementById("th-color").value=v; };
-document.getElementById("th-reset").onclick = ()=>{ document.getElementById("th-color-hex").value=""; document.getElementById("th-color").value="#1877E6"; };
+document.getElementById("th-color").oninput = e=>{ document.getElementById("th-color-hex").value = e.target.value.toUpperCase(); paintLogoPreview(); };
+document.getElementById("th-color-hex").oninput = e=>{ const v=e.target.value.trim(); if(/^#[0-9a-f]{6}$/i.test(v)) document.getElementById("th-color").value=v; paintLogoPreview(); };
+document.getElementById("th-reset").onclick = ()=>{ document.getElementById("th-color-hex").value=""; document.getElementById("th-color").value="#EE7623"; paintLogoPreview(); };
 document.getElementById("th-logo-file").onchange = async e=>{
   const f=e.target.files[0]; if(!f)return;
-  const v=await uploadImageFile(f);
-  if(v){ SITE.tema.logo=v; renderLogoPrev(SITE.tema.logo); document.getElementById("th-logo-url").value=""; toast("Logo cargado"); }
+  const v=await uploadImageFile(f, { png:true }); // PNG: conserva la transparencia (sin fondo)
+  if(v){ SITE.tema.logo=v; renderLogoPrev(SITE.tema.logo); document.getElementById("th-logo-url").value=""; paintLogoPreview(); toast("Logo cargado (recuerda Guardar apariencia)"); }
   e.target.value="";
 };
-document.getElementById("th-logo-clear").onclick = ()=>{ SITE.tema.logo=""; renderLogoPrev(""); document.getElementById("th-logo-url").value=""; };
+document.getElementById("th-logo-clear").onclick = ()=>{ SITE.tema.logo=""; renderLogoPrev(""); document.getElementById("th-logo-url").value=""; paintLogoPreview(); };
 document.getElementById("th-save").onclick = async ()=>{
   const hex=document.getElementById("th-color-hex").value.trim();
   SITE.tema.primary = /^#[0-9a-f]{6}$/i.test(hex) ? hex : "";
   const url=document.getElementById("th-logo-url").value.trim();
   if(url) SITE.tema.logo = url;
-  await saveSiteSafe("Apariencia guardada. Recarga el sitio para verla.");
+  await saveSiteSafe("Apariencia guardada");
 };
 
 // util
@@ -1037,7 +1113,7 @@ function readDataURL(file){ return new Promise((res,rej)=>{ const r=new FileRead
 function compress(file,maxW=1400,q=0.82,type="image/jpeg"){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const s=Math.min(1,maxW/img.width);const c=document.createElement("canvas");c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);res(c.toDataURL(type,q));};img.onerror=rej;img.src=r.result;};r.onerror=rej;r.readAsDataURL(file);});}
 // Convierte cualquier imagen a JPG y devuelve { blob, dataUrl }. Rechaza si el
 // navegador no puede leer/decodificar la imagen (p. ej. HEIC en computadora).
-function compressToBlob(file,maxW=1600,q=0.82){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{try{const s=Math.min(1,maxW/(img.width||maxW));const c=document.createElement("canvas");c.width=Math.max(1,Math.round(img.width*s));c.height=Math.max(1,Math.round(img.height*s));c.getContext("2d").drawImage(img,0,0,c.width,c.height);const dataUrl=c.toDataURL("image/jpeg",q);if(c.toBlob){c.toBlob(b=>{res({blob:b||dataURLtoBlob(dataUrl),dataUrl});},"image/jpeg",q);}else{res({blob:dataURLtoBlob(dataUrl),dataUrl});}}catch(err){rej(err);}};img.onerror=()=>rej(new Error("decode"));img.src=r.result;};r.onerror=()=>rej(new Error("read"));r.readAsDataURL(file);});}
+function compressToBlob(file,maxW=1600,q=0.82,type="image/jpeg"){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{try{const s=Math.min(1,maxW/(img.width||maxW));const c=document.createElement("canvas");c.width=Math.max(1,Math.round(img.width*s));c.height=Math.max(1,Math.round(img.height*s));c.getContext("2d").drawImage(img,0,0,c.width,c.height);const dataUrl=c.toDataURL(type,q);if(c.toBlob){c.toBlob(b=>{res({blob:b||dataURLtoBlob(dataUrl),dataUrl});},type,q);}else{res({blob:dataURLtoBlob(dataUrl),dataUrl});}}catch(err){rej(err);}};img.onerror=()=>rej(new Error("decode"));img.src=r.result;};r.onerror=()=>rej(new Error("read"));r.readAsDataURL(file);});}
 function dataURLtoBlob(d){const a=d.split(",");const m=(a[0].match(/:(.*?);/)||[])[1]||"image/jpeg";const bin=atob(a[1]);let n=bin.length;const u=new Uint8Array(n);while(n--)u[n]=bin.charCodeAt(n);return new Blob([u],{type:m});}
 </script>
 </body>

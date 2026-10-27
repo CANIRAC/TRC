@@ -5,8 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>CANIRAC Laguna — Catálogo de Proveedores</title>
 <meta name="description" content="Catálogo de proveedores de CANIRAC Laguna. Encuentra los mejores proveedores para tu restaurante.">
-<meta name="theme-color" content="#1877E6">
+<meta name="theme-color" content="#EE7623">
 <meta name="format-detection" content="telephone=no">
+<script>
+/* Aplica el color, el tamaño y el estilo del logo guardados ANTES de pintar la
+   página: así la app nunca aparece con otro color o tamaño mientras carga. */
+(function(){try{
+  var t=JSON.parse(localStorage.getItem("canirac_theme_v2")||"null"); if(!t) return;
+  var r=document.documentElement.style;
+  if(/^#[0-9a-f]{6}$/i.test(t.primary||"")){
+    r.setProperty("--primary",t.primary);
+    if(t.primaryD) r.setProperty("--primary-d",t.primaryD);
+    if(t.primaryL) r.setProperty("--primary-l",t.primaryL);
+    if(t.grad) r.setProperty("--grad",t.grad);
+    var m=document.querySelector('meta[name="theme-color"]'); if(m) m.content=t.primary;
+  }
+  if(t.logoH>=40 && t.logoH<=220) r.setProperty("--logo-h",t.logoH+"px");
+  if(t.logoStyle==="original") r.setProperty("--logo-filter","none");
+}catch(e){}})();
+</script>
 <link rel="icon" href="logoapp.png" type="image/png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -183,6 +200,7 @@
     <a data-nav="promociones" data-ic="tag">Promociones</a>
     <a data-nav="favoritos" data-ic="heart">Favoritos</a>
     <a data-nav="contacto" data-ic="phone">Contacto</a>
+    <a data-refresh data-ic="refresh">Actualizar</a>
     <a data-pwa-install data-ic="download">Cómo instalar la app</a>
   </nav>
   <hr>
@@ -190,6 +208,9 @@
   <div class="drawer-social" id="drawerSocial"></div>
   <div class="drawer-info" id="drawerInfo"></div>
 </aside>
+
+<!-- Indicador de "jalar para actualizar" (app instalada en el celular) -->
+<div class="ptr" id="ptr" data-ic="refresh"></div>
 
 <!-- ===== App ===== -->
 <div class="app">

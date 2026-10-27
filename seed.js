@@ -1,5 +1,5 @@
 // Datos de 62 proveedores (desde PROVEEDORES.xlsx) con categoría y destacados.
-export const CATEGORIAS = [{"nombre": "Carnes", "color": "#C23B33"}, {"nombre": "Frutas y Verduras", "color": "#3FA34D"}, {"nombre": "Hielo", "color": "#2E86F0"}, {"nombre": "Bebidas", "color": "#6C4AB6"}, {"nombre": "Limpieza", "color": "#0FB5AE"}, {"nombre": "Desechables", "color": "#E4922B"}, {"nombre": "Uniformes", "color": "#E4692B"}, {"nombre": "Tecnología", "color": "#2E5BEA"}, {"nombre": "Mobiliario", "color": "#8A6D3B"}, {"nombre": "Empaques", "color": "#B4791F"}, {"nombre": "Otros", "color": "#1877E6"}];
+export const CATEGORIAS = [{"nombre": "Carnes", "color": "#C23B33"}, {"nombre": "Frutas y Verduras", "color": "#3FA34D"}, {"nombre": "Hielo", "color": "#2E86F0"}, {"nombre": "Bebidas", "color": "#6C4AB6"}, {"nombre": "Limpieza", "color": "#0FB5AE"}, {"nombre": "Desechables", "color": "#E4922B"}, {"nombre": "Uniformes", "color": "#E4692B"}, {"nombre": "Tecnología", "color": "#2E5BEA"}, {"nombre": "Mobiliario", "color": "#8A6D3B"}, {"nombre": "Empaques", "color": "#B4791F"}, {"nombre": "Otros", "color": "#00758D"}];
 
 export const SEED_PROVEEDORES = [
  {

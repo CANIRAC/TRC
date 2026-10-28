@@ -659,12 +659,22 @@ function maybeAutoNotif(){
 
 // ---------- Activar avisos push en este celular ----------
 const PUSH_ON = "canirac_push_on_v1";
+function isIOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1); }
 function pushRowHtml(){
-  if(!pushSupported() || !currentUser()) return "";
+  if(getMode()==="cloud" && !currentUser()) return "";
+  // iPhone: los avisos solo funcionan con la app instalada. Antes este aviso no aparecía y
+  // la persona nunca se enteraba; ahora le explica cómo instalarla.
+  if(!pushSupported()){
+    if(isIOS() && !isStandalone()) return `<div class="push-row">
+      <div class="push-txt"><b>Recibe promociones y avisos</b><small>En iPhone, primero instala la app en tu pantalla de inicio.</small></div>
+      <button class="push-btn" data-pwa-install>Cómo instalar</button>
+    </div>`;
+    return "";
+  }
   let on=false; try{ on = (localStorage.getItem(PUSH_ON)==="1") && (Notification.permission==="granted"); }catch(e){}
   if(on) return `<div class="push-row on">✅ Avisos activados en este dispositivo</div>`;
   return `<div class="push-row">
-    <div class="push-txt"><b>Recibe los avisos en tu dispositivo</b><small>Aunque no tengas la app abierta.</small></div>
+    <div class="push-txt"><b>Recibe promociones y avisos</b><small>Te llegan aunque no tengas la app abierta.</small></div>
     <button class="push-btn" id="pushEnableBtn">Activar</button>
   </div>`;
 }
@@ -729,7 +739,7 @@ function openNotifs(markSeen=true){
 //  En Android / navegador, «atrás» cierra la ventana abierta o
 //  regresa a la vista anterior, en vez de salir de la app.
 // ============================================================
-const OVERLAYS = ["notifModal","provModal","joinModal","drawer"];
+const OVERLAYS = ["notifModal","provModal","joinModal","tutoModal","drawer"];
 function isOpen(id){ const el=document.getElementById(id); return !!(el && el.classList.contains("open")); }
 function syncScrollLock(){
   const any = OVERLAYS.some(isOpen) || isOpen("lightbox");
@@ -859,14 +869,19 @@ function renderCategorias(){
   [home,all].forEach(g=>g.querySelectorAll(".cat").forEach(b=>b.onclick=()=>go("cat:"+b.dataset.ci)));
 }
 // Slider de logos (marquee) en el inicio
+// Cada logo es { url, zoom } (zoom = % del recuadro que ocupa, ajustable en el admin).
+// Los que se guardaron antes como texto (solo la URL) también funcionan.
 function renderMarquee(images){
   const el = document.getElementById("logoMarquee");
   if(!el) return;
-  const imgs = (images||[]).map(safeUrl).filter(Boolean);
-  if(!imgs.length){ el.style.display="none"; el.innerHTML=""; return; }
+  const items = (images||[]).map(x => typeof x === "string" ? { url:x, zoom:90 } : (x || {}))
+    .map(x => ({ url: safeUrl(x.url), zoom: Math.max(50, Math.min(100, Math.round(+x.zoom || 90))) }))
+    .filter(x => x.url);
+  if(!items.length){ el.style.display="none"; el.innerHTML=""; return; }
   el.style.display="";
-  const chips = imgs.map(u=>`<div class="mq-item"><img src="${escapeHtml(u)}" alt="" loading="lazy"></div>`).join("");
-  el.innerHTML = `<div class="mq-track" style="animation-duration:${Math.max(18, imgs.length*4)}s">${chips}${chips}</div>`;
+  const chips = items.map(x=>`<div class="mq-item"><img src="${escapeHtml(x.url)}" alt="" loading="lazy" onerror="this.parentNode.remove()" style="width:${x.zoom}%;height:${x.zoom}%"></div>`).join("");
+  // Se duplica la tira para que el movimiento sea continuo
+  el.innerHTML = `<div class="mq-track" style="animation-duration:${Math.max(18, items.length*4)}s">${chips}${chips}</div>`;
 }
 
 // ============================================================
@@ -1114,6 +1129,40 @@ function wireModals(){
   // Tocar fuera de la ventana la cierra (y libera el desplazamiento de la página)
   document.querySelectorAll(".modal-overlay").forEach(o=>o.addEventListener("click", e=>{ if(e.target===o) closeOverlay(o.id); }));
   document.getElementById("jmSend").onclick = submitJoin;
+  wireTutoriales();
+}
+
+// ============================================================
+//  TUTORIALES EN VIDEO (mini curso para usuarios)
+// ============================================================
+const TUTORIALES = [
+  { n:"▶", t:"Conoce el Catálogo (presentación)", d:"Todo lo que puedes hacer con la app, en menos de 2 minutos.", v:"videos/intro-trailer.mp4" },
+  { n:1, t:"Instala la app", d:"En Android, iPhone y computadora.", v:"videos/usuario-1-instalar.mp4" },
+  { n:2, t:"Crea tu cuenta e inicia sesión", d:"Registro con Google, contraseña y 15 días de prueba.", v:"videos/usuario-2-cuenta.mp4" },
+  { n:3, t:"Conoce la app", d:"Inicio, categorías, fichas, WhatsApp y menú.", v:"videos/usuario-3-recorrido.mp4" },
+  { n:4, t:"Busca proveedores y guarda favoritos", d:"Buscador, búsquedas recientes y tu lista de favoritos.", v:"videos/usuario-4-buscar-favoritos.mp4" },
+  { n:5, t:"Activa los avisos", d:"Recibe promociones y avisos importantes en tu celular.", v:"videos/usuario-5-avisos.mp4" }
+];
+function wireTutoriales(){
+  const list = document.getElementById("tutoList"), player = document.getElementById("tutoPlayer");
+  if(!list || !player) return;
+  list.innerHTML = TUTORIALES.map((x,i)=>`
+    <button class="tuto-item${i===0?" on":""}" data-tv="${i}">
+      <span class="tuto-n">${x.n}</span>
+      <span class="tuto-tx"><b>${escapeHtml(x.t)}</b><small>${escapeHtml(x.d)}</small></span>
+      <span class="tuto-play">${ICONS.play}</span>
+    </button>`).join("");
+  const load = (i, autoplay)=>{
+    const x = TUTORIALES[i];
+    player.src = x.v; player.poster = x.v.replace(/\.mp4$/,".jpg");
+    list.querySelectorAll(".tuto-item").forEach(b=>b.classList.toggle("on", +b.dataset.tv===i));
+    if(autoplay) player.play().catch(()=>{});
+  };
+  list.querySelectorAll(".tuto-item").forEach(b=>b.addEventListener("click", ()=>{ load(+b.dataset.tv, true); player.scrollIntoView({ behavior:"smooth", block:"nearest" }); }));
+  document.querySelectorAll("[data-tutoriales]").forEach(a=>a.addEventListener("click", ()=>{ if(!player.src) load(0,false); openOverlay("tutoModal"); }));
+  // Al cerrar, el video se detiene
+  new MutationObserver(()=>{ if(!document.getElementById("tutoModal").classList.contains("open")) player.pause(); })
+    .observe(document.getElementById("tutoModal"), { attributes:true, attributeFilter:["class"] });
 }
 function resetJoin(){
   document.getElementById("jmForm").classList.remove("hidden");

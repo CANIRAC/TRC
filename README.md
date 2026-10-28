@@ -137,6 +137,27 @@ Authentication → Settings → **Authorized domains → Add domain**: agrega
 
 ---
 
+## Videos: presentación y mini curso
+En la carpeta `videos/` hay 11 videos (MP4) con su portada (JPG):
+- **Presentación (tráiler):** `intro-trailer.mp4` — horizontal, para mostrar el sistema a socios, en juntas o redes.
+- **Usuarios (5, formato celular):** instalar la app · crear cuenta e iniciar sesión · conocer la app ·
+  buscar y favoritos · activar avisos. Están en el catálogo: menú ☰ → **Tutoriales en video**.
+- **Administrador (5, formato computadora):** el panel · autorizaciones · proveedores · categorías y slider ·
+  avisos y apariencia. Están en el panel: pestaña **🎓 Mini curso**.
+
+Los textos de cada video (con tiempos) están en `videos-guiones/GUIONES.md`, y los subtítulos en `.srt`,
+por si quieres grabar una voz en off. Esa carpeta es solo para ti (no se sube al sitio).
+
+## Slider de logos (editor)
+En el panel → **Slider** → **＋ Subir logo…** se abre un editor que:
+- **Elimina el fondo** (de un solo color) sin borrar lo blanco que está dentro del logo. Con «Sensibilidad»
+  ajustas cuánto borra. Si el logo es claro (letras blancas), conserva el fondo solo para que se vea.
+- **Recorta los márgenes vacíos**, para que el logo ocupe el mayor espacio posible del recuadro.
+- **Tamaño dentro del recuadro** (50–100 %, recomendado 90 %) y vista previa exacta en celular y computadora.
+- Avisa si el logo es chico, vertical, JPG o con fondo de foto.
+Medida recomendada para pedir a los proveedores: **800 × 400 px** (mínimo 600 × 300), horizontal,
+**PNG con fondo transparente**. En la lista puedes cambiar el tamaño (✎), el orden (◀ ▶) o quitarlo.
+
 ## Diseño, logo y fotos
 El color principal por defecto es el naranja CANIRAC **#EE7623** (se cambia en *Apariencia → Color principal*).
 - **Logo del inicio** (el de arriba del carrusel): *Apariencia → Logo del inicio*. Ajusta el **tamaño**

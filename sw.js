@@ -3,11 +3,11 @@
      guardada. Así nunca se mezclan versiones viejas y nuevas de los archivos.
    - Imágenes y video: primero la copia guardada (más rápido), si no, la red.
    Sube el número de versión (CACHE) cuando cambies la lista de archivos. */
-const CACHE = "canirac-v16";
+const CACHE = "canirac-v18";
 const LIBS = "canirac-libs-v1"; // librerías de Firebase y tipografías (no cambian)
 const ASSETS = [
   "./", "index.html", "admin.html", "styles.css",
-  "app.js", "ui.js", "config.js", "seed.js", "store.js", "pwa.js",
+  "app.js", "ui.js", "config.js", "seed.js", "store.js", "pwa.js", "logo-tools.js",
   "manifest.json", "admin-manifest.json", "logo.png", "logoapp.png",
   "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"
 ];
@@ -72,8 +72,8 @@ self.addEventListener("fetch", (e) => {
   }
   // No interceptar otros orígenes (Firestore, Storage, autenticación, etc.)
   if (url.origin !== self.location.origin) return;
-  // Videos grandes (peticiones por rangos): directo a la red
-  if (req.headers.has("range")) return;
+  // Videos (tutoriales y de proveedores): siempre directo a la red, sin guardarlos
+  if (req.headers.has("range") || url.pathname.includes("/videos/") || /\.mp4$/i.test(url.pathname)) return;
 
   // Navegación: red; sin conexión, la MISMA página guardada (admin.html sigue siendo el panel)
   if (req.mode === "navigate") {

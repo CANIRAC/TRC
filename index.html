@@ -201,6 +201,7 @@
     <a data-nav="favoritos" data-ic="heart">Favoritos</a>
     <a data-nav="contacto" data-ic="phone">Contacto</a>
     <a data-refresh data-ic="refresh">Actualizar</a>
+    <a data-tutoriales data-ic="play">Tutoriales en video</a>
     <a data-pwa-install data-ic="download">Cómo instalar la app</a>
   </nav>
   <hr>
@@ -325,6 +326,21 @@
   <button class="bnav" data-nav="favoritos"><span data-ic="heart"></span>Favoritos</button>
   <button class="bnav" data-nav="contacto"><span data-ic="phone"></span>Contacto</button>
 </nav>
+
+<!-- ===== Modal tutoriales en video ===== -->
+<div class="modal-overlay" id="tutoModal">
+  <div class="modal tuto-modal">
+    <div class="modal-head" style="background:var(--grad)">
+      <button class="m-close" data-close="tutoModal" data-ic="close" aria-label="Cerrar"></button>
+      <div class="mh-cat">Mini curso</div>
+      <h3>Tutoriales en video</h3>
+    </div>
+    <div class="modal-body">
+      <video class="tuto-player" id="tutoPlayer" controls playsinline preload="metadata"></video>
+      <div class="tuto-list" id="tutoList"></div>
+    </div>
+  </div>
+</div>
 
 <!-- ===== Modal notificaciones ===== -->
 <div class="modal-overlay" id="notifModal">

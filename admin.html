@@ -69,8 +69,15 @@
       <button class="atab" data-tab="slider">Slider</button>
       <button class="atab" data-tab="equipo">Solicitudes de proveedores <span class="b hidden" id="eqBadge">0</span></button>
       <button class="atab" data-tab="tema">Apariencia</button>
+      <button class="atab" data-tab="curso">🎓 Mini curso</button>
     </nav>
     <div class="apanels">
+
+    <!-- MINI CURSO (videos para el administrador) -->
+    <section class="apanel" id="p-curso">
+      <div class="hint">Video de presentación (para mostrar el sistema a socios y restaurantes) y mini curso del panel en 5 videos cortos. Los videos para los usuarios del catálogo están en el menú ☰ del catálogo → <b>Tutoriales en video</b>.</div>
+      <div class="curso-grid" id="cursoGrid"></div>
+    </section>
 
     <!-- AUTORIZACIONES DE ACCESO -->
     <section class="apanel" id="p-accesos">
@@ -194,14 +201,19 @@
 
     <!-- SLIDER -->
     <section class="apanel" id="p-slider">
-      <div class="hint">Agrega los <b>logos/imágenes</b> de los proveedores que van pasando en el slider del inicio. Recomendado: imágenes con fondo transparente o blanco.</div>
+      <div class="hint">Agrega los <b>logos</b> de los proveedores que van pasando en el slider del inicio. Al subir uno se abre un editor para <b>eliminar el fondo</b>, <b>recortar los márgenes</b> y ajustar su <b>tamaño</b>. Toca un logo de la lista para cambiar su tamaño u orden.</div>
+      <div class="sl-medida">
+        <div class="sl-medida-ic">📐</div>
+        <div><b>Medida recomendada para los logos: 800 × 400 px</b> (mínimo 600 × 300 px), horizontal, en <b>PNG con fondo transparente</b>.
+          <span>Pide a cada proveedor su logo en este formato: así se ve nítido, sin pixelarse ni estirarse.</span></div>
+      </div>
       <div class="atoolbar">
-        <div class="grow"><input id="slUrl" placeholder="URL de imagen/logo"></div>
-        <button class="btn-blue" id="slAddUrl">Agregar URL</button>
-        <label class="btn-soft" style="margin:0">Subir imagen…<input type="file" id="slFile" accept="image/*" hidden></label>
+        <label class="btn-blue" style="margin:0;cursor:pointer">＋ Subir logo…<input type="file" id="slFile" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/*" hidden></label>
+        <div class="grow"><input id="slUrl" placeholder="…o pega la URL de un logo"></div>
+        <button class="btn-soft" id="slAddUrl">Agregar URL</button>
       </div>
       <div id="slCount" class="muted" style="color:var(--muted);font-size:.9rem;margin-bottom:.6rem"></div>
-      <div class="media-mini" id="slList" style="gap:.7rem"></div>
+      <div class="sl-list" id="slList"></div>
     </section>
 
     <!-- APARIENCIA -->
@@ -246,6 +258,47 @@
         <button class="btn-primary" id="th-save" style="max-width:240px">Guardar apariencia</button>
       </div>
     </section>
+    </div>
+  </div>
+</div>
+
+<!-- EDITOR DE LOGOS DEL SLIDER -->
+<div class="le-overlay" id="leOverlay" aria-hidden="true">
+  <div class="le-box" role="dialog" aria-modal="true" aria-labelledby="leTitle">
+    <div class="le-head">
+      <h3 id="leTitle">Ajustar logo del slider</h3>
+      <button class="x" id="leClose" type="button" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="le-body">
+      <div class="le-previews">
+        <div class="le-label">Resultado <small>(los cuadros grises = transparente)</small></div>
+        <div class="le-checker"><canvas id="leCanvas"></canvas><div class="le-busy" id="leBusy">Procesando…</div></div>
+        <div class="le-label">Así se verá en el slider</div>
+        <div class="le-chips">
+          <figure><div class="mq-item le-chip"><img id="leChipM" alt=""></div><figcaption>Celular</figcaption></figure>
+          <figure><div class="mq-item le-chip lg"><img id="leChipD" alt=""></div><figcaption>Computadora</figcaption></figure>
+        </div>
+      </div>
+      <div class="le-controls">
+        <div class="le-proc" id="leProc">
+          <label class="check"><input type="checkbox" id="leRemove"> <span><b>Eliminar fondo</b> <small id="leBgInfo"></small></span></label>
+          <div class="field le-sens" id="leSensRow">
+            <label>Sensibilidad del borrado <small>(súbela si queda fondo; bájala si se borra parte del logo)</small></label>
+            <div class="range-row"><input type="range" id="leSens" min="2" max="70" step="1" value="26"><b id="leSensV">26</b></div>
+          </div>
+          <label class="check"><input type="checkbox" id="leTrim" checked> <span><b>Recortar márgenes vacíos</b> <small>— el logo ocupa más espacio</small></span></label>
+        </div>
+        <div class="field">
+          <label>Tamaño dentro del recuadro</label>
+          <div class="range-row"><input type="range" id="leZoom" min="50" max="100" step="1" value="90"><b id="leZoomV">90%</b></div>
+          <small class="help">90% deja un pequeño margen para que el logo no se vea apretado.</small>
+        </div>
+        <div class="le-notes" id="leNotes"></div>
+      </div>
+    </div>
+    <div class="le-foot">
+      <button class="btn-soft" id="leCancel" type="button">Cancelar</button>
+      <button class="btn-blue" id="leSave" type="button">Guardar en el slider</button>
     </div>
   </div>
 </div>
@@ -328,11 +381,13 @@
   </div>
 </aside>
 
+<script src="pwa.js"></script>
 <script type="module">
 import { brandHTML, ICONS, CATEGORY_ICONS, escapeHtml, safeUrl, toast, createLoader } from "./ui.js";
 import { ADMIN } from "./config.js";
 import { CATEGORIAS } from "./seed.js";
 import * as store from "./store.js";
+import * as LT from "./logo-tools.js";
 
 document.getElementById("loginBrand").innerHTML = brandHTML({ vertical:true });
 document.getElementById("adminBrand").innerHTML = brandHTML({ onDark:true });
@@ -378,6 +433,21 @@ function friendly(err){
 }
 document.getElementById("logoutBtn").onclick=async()=>{ await store.adminLogout(); location.reload(); };
 document.getElementById("refreshBtnTop").onclick=()=>location.reload();
+
+// Mini curso: 5 videos del panel (se cargan solo al reproducirlos)
+const CURSO = [
+  { t:"Presentación del Catálogo", d:"Video de introducción para mostrar el sistema a socios y restaurantes.", v:"videos/intro-trailer.mp4" },
+  { t:"1. Entra al panel e instálalo", d:"Inicio de sesión, recorrido por las secciones y botón Actualizar.", v:"videos/admin-1-panel.mp4" },
+  { t:"2. Autorizaciones de acceso", d:"Confirma o deniega solicitudes, periodo de prueba y avisos.", v:"videos/admin-2-autorizaciones.mp4" },
+  { t:"3. Proveedores", d:"Agrega y edita proveedores: logo, portada, fotos, videos y destacados.", v:"videos/admin-3-proveedores.mp4" },
+  { t:"4. Categorías y slider", d:"Crea categorías con foto, asigna proveedores y arma el slider de logos.", v:"videos/admin-4-categorias-slider.mp4" },
+  { t:"5. Avisos y apariencia", d:"Publica promociones y avisos, ajusta el logo, el color y revisa solicitudes.", v:"videos/admin-5-avisos-apariencia.mp4" }
+];
+document.getElementById("cursoGrid").innerHTML = CURSO.map(c=>`
+  <div class="curso-card">
+    <video controls playsinline preload="none" poster="${c.v.replace(/\.mp4$/,".jpg")}" src="${c.v}"></video>
+    <div class="cc-body"><b>${escapeHtml(c.t)}</b><small>${escapeHtml(c.d)}</small></div>
+  </div>`).join("");
 
 async function showAdmin(){
   if(adminShown) return;   // onAuthStateChanged y el formulario pueden llamarlo dos veces
@@ -1021,25 +1091,175 @@ function editNotif(i){
   document.getElementById("p-notifs").scrollIntoView({behavior:"smooth"});
 }
 
-// ---------- Slider ----------
+// ---------- Slider de logos ----------
+// Cada logo se guarda como { url, zoom } (zoom = % del recuadro que ocupa).
+// Los guardados antes como texto (solo la URL) siguen funcionando.
+const ZOOM_DEF = 90;
+const clampZoom = z => Math.max(50, Math.min(100, Math.round(+z || ZOOM_DEF)));
+const slItem = x => typeof x === "string" ? { url: x, zoom: ZOOM_DEF } : { url: (x && x.url) || "", zoom: clampZoom(x && x.zoom) };
+function chipImg(url, zoom){ return `<img src="${escapeHtml(url)}" alt="" style="width:${zoom}%;height:${zoom}%">`; }
 function renderSlider(){
-  const el = document.getElementById("slList");
-  document.getElementById("slCount").textContent = `${SITE.slider.length} imagen${SITE.slider.length!==1?"es":""}`;
-  el.innerHTML = SITE.slider.length
-    ? SITE.slider.map((u,i)=>`<div class="m" style="width:96px;height:60px;background:#fff"><img src="${escapeHtml(u)}" style="object-fit:contain"><button data-slrm="${i}">×</button></div>`).join("")
-    : `<span class="muted" style="color:var(--muted)">Sin imágenes en el slider.</span>`;
-  el.querySelectorAll("[data-slrm]").forEach(b=>b.onclick=async()=>{ SITE.slider.splice(+b.dataset.slrm,1); if(await saveSiteSafe("Imagen eliminada")) renderSlider(); });
+  SITE.slider = SITE.slider.map(slItem).filter(x=>x.url);
+  const el = document.getElementById("slList"), n = SITE.slider.length;
+  document.getElementById("slCount").textContent = `${n} logo${n!==1?"s":""} en el slider`;
+  el.innerHTML = n
+    ? SITE.slider.map((it,i)=>`<div class="sl-item">
+        <button class="mq-item lg sl-prev" data-sledit="${i}" title="Ajustar tamaño">${chipImg(it.url, it.zoom)}</button>
+        <div class="sl-meta"><small>${it.zoom}% · posición ${i+1}</small>
+          <span class="sl-acts">
+            <button class="icon-btn" data-slmove="${i}" data-dir="-1" title="Mover antes" ${i===0?"disabled":""}>◀</button>
+            <button class="icon-btn" data-slmove="${i}" data-dir="1" title="Mover después" ${i===n-1?"disabled":""}>▶</button>
+            <button class="icon-btn" data-sledit="${i}" title="Ajustar tamaño">${ICONS.edit}</button>
+            <button class="icon-btn del" data-slrm="${i}" title="Quitar">${ICONS.trash}</button>
+          </span></div>
+      </div>`).join("")
+    : `<div class="acc-empty">Aún no hay logos. Toca <b>«＋ Subir logo…»</b> para agregar el primero.</div>`;
+  el.querySelectorAll("[data-sledit]").forEach(b=>b.onclick=()=>openSizeEditor(+b.dataset.sledit));
+  el.querySelectorAll("[data-slmove]").forEach(b=>b.onclick=async()=>{
+    const i=+b.dataset.slmove, j=i+(+b.dataset.dir); if(j<0||j>=SITE.slider.length) return;
+    [SITE.slider[i],SITE.slider[j]]=[SITE.slider[j],SITE.slider[i]];
+    if(await saveSiteSafe("Orden actualizado")) renderSlider();
+  });
+  el.querySelectorAll("[data-slrm]").forEach(b=>b.onclick=async()=>{
+    if(!confirm("¿Quitar este logo del slider?")) return;
+    SITE.slider.splice(+b.dataset.slrm,1);
+    if(await saveSiteSafe("Logo quitado")) renderSlider();
+  });
 }
-document.getElementById("slAddUrl").onclick = async ()=>{
-  const u = document.getElementById("slUrl").value.trim(); if(!u){ toast("Escribe una URL","err"); return; }
-  SITE.slider.push(u); document.getElementById("slUrl").value="";
-  if(await saveSiteSafe("Imagen agregada")) renderSlider();
+document.getElementById("slAddUrl").onclick = ()=>{
+  const u = safeUrl(document.getElementById("slUrl").value.trim());
+  if(!u || !/^https?:/i.test(u)){ toast("Escribe una URL válida (https://…)","err"); return; }
+  openSizeEditor(-1, u);
 };
-document.getElementById("slFile").onchange = async e=>{
-  const f=e.target.files[0]; if(!f)return;
-  const v=await uploadImageFile(f);
-  if(v){ SITE.slider.push(v); if(await saveSiteSafe("Imagen agregada")) renderSlider(); }
-  e.target.value="";
+document.getElementById("slFile").onchange = e=>{
+  const f=e.target.files[0]; e.target.value="";
+  if(f) openLogoEditor(f);
+};
+
+// ---------- Editor de logos (quitar fondo, recortar, tamaño) ----------
+let LE = null;
+const $le = id => document.getElementById(id);
+function leShow(on){ $le("leOverlay").classList.toggle("open", on); $le("leOverlay").setAttribute("aria-hidden", on?"false":"true"); document.body.style.overflow = on ? "hidden" : ""; }
+function leClose(){ leShow(false); LE = null; }
+$le("leClose").onclick = leClose; $le("leCancel").onclick = leClose;
+$le("leOverlay").addEventListener("click", e=>{ if(e.target.id==="leOverlay") leClose(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && LE) leClose(); });
+
+function lePaintChips(url){
+  const z = clampZoom($le("leZoom").value);
+  $le("leZoomV").textContent = z + "%";
+  ["leChipM","leChipD"].forEach(id=>{ const im=$le(id); im.src = url; im.style.width = z+"%"; im.style.height = z+"%"; });
+}
+function leNotes(list){
+  $le("leNotes").innerHTML = list.map(n=>`<div class="le-note ${n.nivel}">${escapeHtml(n.txt)}</div>`).join("");
+}
+
+// Nuevo logo desde archivo: se procesa en el navegador antes de subirlo
+async function openLogoEditor(file){
+  if(!/^image\//.test(file.type||"") && !/\.(png|jpe?g|webp|svg)$/i.test(file.name||"")){ toast("Ese archivo no es una imagen","err"); return; }
+  let img;
+  try{ img = await LT.loadImage(URL.createObjectURL(file)); }
+  catch(e){ toast("No se pudo leer la imagen. Si es de iPhone (HEIC), súbela en PNG o JPG.","err",6000); return; }
+  const base = LT.toCanvas(img);
+  const info = LT.analyze(base);
+  LE = { mode:"nuevo", base, info, srcW: img.naturalWidth||img.width, srcH: img.naturalHeight||img.height,
+         esJpg: /jpe?g$/i.test(file.type||file.name||""), result:null, token:0 };
+  $le("leTitle").textContent = "Ajustar logo del slider";
+  $le("leProc").hidden = false;
+  $le("leCanvas").parentElement.hidden = false;
+  const transparente = info.tipo === "transparente";
+  $le("leRemove").checked = info.tipo === "liso";
+  $le("leRemove").disabled = transparente;
+  $le("leBgInfo").textContent = transparente ? "— ya tiene fondo transparente ✓"
+    : info.tipo === "liso" ? `— se detectó un fondo de un solo color` : "— fondo con varios colores: revisa el resultado";
+  $le("leSens").value = 26; $le("leSensV").textContent = "26";
+  $le("leTrim").checked = true;
+  $le("leZoom").value = ZOOM_DEF;
+  leShow(true);
+  await leProcess();
+}
+// Ajustar tamaño de un logo ya guardado (idx) o de una URL nueva (idx = -1)
+function openSizeEditor(idx, url){
+  const it = idx >= 0 ? slItem(SITE.slider[idx]) : { url, zoom: ZOOM_DEF };
+  LE = { mode: idx >= 0 ? "editar" : "url", idx, url: it.url };
+  $le("leTitle").textContent = idx >= 0 ? "Tamaño del logo en el slider" : "Agregar logo desde URL";
+  $le("leProc").hidden = true;
+  $le("leCanvas").parentElement.hidden = true;
+  $le("leZoom").value = it.zoom;
+  lePaintChips(it.url);
+  leNotes([{ nivel:"info", txt: idx >= 0 ? "Mueve «Tamaño dentro del recuadro» y guarda." : "Las imágenes desde URL no se pueden recortar ni quitarles el fondo. Para eso, descárgala y súbela con «＋ Subir logo…»." }]);
+  leShow(true);
+}
+
+// Procesa con las opciones actuales (se repite al mover los controles)
+let leTimer = null;
+function leSchedule(){ clearTimeout(leTimer); leTimer = setTimeout(leProcess, 120); }
+async function leProcess(){
+  if(!LE || LE.mode !== "nuevo") return;
+  const token = ++LE.token;
+  $le("leBusy").classList.add("on");
+  await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
+  const sens = +$le("leSens").value, quitar = $le("leRemove").checked && LE.info.tipo !== "transparente";
+  $le("leSensRow").classList.toggle("off", !quitar);
+  // copia de trabajo
+  let c = document.createElement("canvas"); c.width = LE.base.width; c.height = LE.base.height;
+  c.getContext("2d").drawImage(LE.base, 0, 0);
+  if(quitar) LT.removeBackground(c, LE.info.bg, sens);
+  if($le("leTrim").checked) c = LT.trim(c, (!quitar && LE.info.tipo !== "transparente") ? LE.info.bg : null, sens);
+  const res = await LT.exportPng(c);
+  if(!LE || token !== LE.token) return; // llegó otro cambio mientras procesaba
+  LE.result = res; LE.canvas = c;
+  // Vista del resultado sobre cuadros (transparencia visible)
+  const cv = $le("leCanvas"); cv.width = res.width; cv.height = res.height;
+  const img = await LT.loadImage(res.dataUrl); cv.getContext("2d").clearRect(0,0,cv.width,cv.height); cv.getContext("2d").drawImage(img,0,0);
+  lePaintChips(res.dataUrl);
+  const casiBlanco = quitar && leMostlyWhite(c);
+  // Primera vez: si sin fondo el logo quedaría blanco sobre blanco, se deja el fondo automáticamente
+  if(casiBlanco && !LE.revisado){ LE.revisado = true; LE.fondoConservado = true; $le("leRemove").checked = false; return leProcess(); }
+  LE.revisado = true;
+  const notes = LT.qualityNotes({ srcW: LE.srcW, srcH: LE.srcH, outW: res.width, outH: res.height, tipo: LE.info.tipo, esJpg: LE.esJpg });
+  if(casiBlanco) notes.unshift({ nivel:"err", txt:"Sin su fondo, el logo quedó casi blanco y no se verá sobre el recuadro blanco del slider. Desactiva «Eliminar fondo»." });
+  else if(LE.fondoConservado && !quitar) notes.unshift({ nivel:"info", txt:"Se conservó el fondo porque el logo es claro: sin él no se vería sobre el recuadro blanco del slider." });
+  leNotes(notes);
+  $le("leBusy").classList.remove("on");
+}
+// ¿Lo que quedó visible es casi todo blanco? (p. ej. letras blancas sobre un fondo de color)
+function leMostlyWhite(c){
+  const d = c.getContext("2d").getImageData(0,0,c.width,c.height).data;
+  let n=0, claro=0;
+  for(let i=0;i<d.length;i+=16){ if(d[i+3]>128){ n++; if(d[i]>225 && d[i+1]>225 && d[i+2]>225) claro++; } }
+  return n>0 && claro/n > 0.8;
+}
+["leRemove","leTrim"].forEach(id=>$le(id).addEventListener("change", leSchedule));
+$le("leSens").addEventListener("input", ()=>{ $le("leSensV").textContent = $le("leSens").value; leSchedule(); });
+$le("leZoom").addEventListener("input", ()=>{
+  const src = LE && (LE.mode === "nuevo" ? (LE.result && LE.result.dataUrl) : LE.url);
+  if(src) lePaintChips(src);
+});
+$le("leSave").onclick = async ()=>{
+  if(!LE) return;
+  const zoom = clampZoom($le("leZoom").value), btn = $le("leSave");
+  btn.disabled = true; const prev = btn.textContent; btn.textContent = "Guardando…";
+  try{
+    if(LE.mode === "editar"){
+      SITE.slider[LE.idx] = { url: LE.url, zoom };
+    } else if(LE.mode === "url"){
+      SITE.slider.push({ url: LE.url, zoom });
+    } else {
+      if(!LE.result){ toast("Espera a que termine de procesar","err"); return; }
+      let url = "";
+      if(store.storageAvailable && store.storageAvailable()){
+        try{ url = await store.uploadFile(new File([LE.result.blob], "logo-slider.png", { type:"image/png" }), "slider"); }
+        catch(e){ console.warn("Storage:", e); toast("No se pudo subir a Storage; se guardó una copia ligera.","err",5000); }
+      }
+      if(!url) url = (await LT.exportPng(LE.canvas, 480)).dataUrl; // respaldo sin Storage
+      SITE.slider.push({ url, zoom });
+    }
+    if(await saveSiteSafe(LE.mode === "editar" ? "Tamaño actualizado" : "Logo agregado al slider")){
+      if(LE.mode === "url") document.getElementById("slUrl").value = "";
+      leClose(); renderSlider();
+    }
+  } finally { btn.disabled = false; btn.textContent = prev; }
 };
 
 // ---------- Logo del inicio: tamaño y estilo (con vista previa en vivo) ----------
@@ -1113,7 +1333,7 @@ function readDataURL(file){ return new Promise((res,rej)=>{ const r=new FileRead
 function compress(file,maxW=1400,q=0.82,type="image/jpeg"){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const s=Math.min(1,maxW/img.width);const c=document.createElement("canvas");c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);res(c.toDataURL(type,q));};img.onerror=rej;img.src=r.result;};r.onerror=rej;r.readAsDataURL(file);});}
 // Convierte cualquier imagen a JPG y devuelve { blob, dataUrl }. Rechaza si el
 // navegador no puede leer/decodificar la imagen (p. ej. HEIC en computadora).
-function compressToBlob(file,maxW=1600,q=0.82,type="image/jpeg"){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{try{const s=Math.min(1,maxW/(img.width||maxW));const c=document.createElement("canvas");c.width=Math.max(1,Math.round(img.width*s));c.height=Math.max(1,Math.round(img.height*s));c.getContext("2d").drawImage(img,0,0,c.width,c.height);const dataUrl=c.toDataURL(type,q);if(c.toBlob){c.toBlob(b=>{res({blob:b||dataURLtoBlob(dataUrl),dataUrl});},type,q);}else{res({blob:dataURLtoBlob(dataUrl),dataUrl});}}catch(err){rej(err);}};img.onerror=()=>rej(new Error("decode"));img.src=r.result;};r.onerror=()=>rej(new Error("read"));r.readAsDataURL(file);});}
+function compressToBlob(file,maxW=1600,q=0.82,type="image/jpeg"){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{try{const s=Math.min(1,maxW/(img.width||maxW));const c=document.createElement("canvas");c.width=Math.max(1,Math.round(img.width*s));c.height=Math.max(1,Math.round(img.height*s));const ctx=c.getContext("2d");if(type==="image/jpeg"){ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);}ctx.drawImage(img,0,0,c.width,c.height);const dataUrl=c.toDataURL(type,q);if(c.toBlob){c.toBlob(b=>{res({blob:b||dataURLtoBlob(dataUrl),dataUrl});},type,q);}else{res({blob:dataURLtoBlob(dataUrl),dataUrl});}}catch(err){rej(err);}};img.onerror=()=>rej(new Error("decode"));img.src=r.result;};r.onerror=()=>rej(new Error("read"));r.readAsDataURL(file);});}
 function dataURLtoBlob(d){const a=d.split(",");const m=(a[0].match(/:(.*?);/)||[])[1]||"image/jpeg";const bin=atob(a[1]);let n=bin.length;const u=new Uint8Array(n);while(n--)u[n]=bin.charCodeAt(n);return new Blob([u],{type:m});}
 </script>
 </body>

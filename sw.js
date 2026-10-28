@@ -3,7 +3,7 @@
      guardada. Así nunca se mezclan versiones viejas y nuevas de los archivos.
    - Imágenes y video: primero la copia guardada (más rápido), si no, la red.
    Sube el número de versión (CACHE) cuando cambies la lista de archivos. */
-const CACHE = "canirac-v18";
+const CACHE = "canirac-v19";
 const LIBS = "canirac-libs-v1"; // librerías de Firebase y tipografías (no cambian)
 const ASSETS = [
   "./", "index.html", "admin.html", "styles.css",

@@ -40,13 +40,16 @@ manifest.json      Configuración de la app instalable del catálogo (PWA)
 admin-manifest.json Configuración de la app instalable del panel (PWA)
 sw.js              Service worker (funciona sin conexión)
 pwa.js             Registro de la PWA, botón "Instalar app" y bloqueo de zoom
+logo-tools.js      Editor de logos del slider: quitar fondo, varita, pincel, recorte
+modelos/u2netp.onnx IA para quitar fondos (se carga solo al usarla)
+videos/            Videos del mini curso y tráiler (MP4 + portada JPG)
 firestore.rules    Reglas de seguridad de la base de datos
 storage.rules      Reglas de seguridad de fotos/videos (Storage)
 logo.png           Logo principal
 logoapp.png        Ícono de la app
 ```
 
-> **Importante:** todos los archivos van **sueltos en la raíz** del repositorio (sin carpetas `css/`, `js/` ni `assets/`). Así es como funciona en GitHub Pages.
+> **Importante:** todos los archivos van **sueltos en la raíz** del repositorio (sin carpetas `css/`, `js/` ni `assets/`), excepto las carpetas `videos/` y `modelos/`, que se suben tal cual. Así es como funciona en GitHub Pages.
 
 ---
 
@@ -145,18 +148,28 @@ En la carpeta `videos/` hay 11 videos (MP4) con su portada (JPG):
 - **Administrador (5, formato computadora):** el panel · autorizaciones · proveedores · categorías y slider ·
   avisos y apariencia. Están en el panel: pestaña **🎓 Mini curso**.
 
-Los textos de cada video (con tiempos) están en `videos-guiones/GUIONES.md`, y los subtítulos en `.srt`,
-por si quieres grabar una voz en off. Esa carpeta es solo para ti (no se sube al sitio).
+Los 5 videos de usuarios tienen **voz en español (México)**, **música de fondo original** (sin derechos de
+autor; baja sola cuando habla la voz) y subtítulos en pantalla. Los textos con tiempos están en
+`videos-guiones/` (`.srt`). Esa carpeta es solo para ti (no se sube al sitio).
 
-## Slider de logos (editor)
-En el panel → **Slider** → **＋ Subir logo…** se abre un editor que:
-- **Elimina el fondo** (de un solo color) sin borrar lo blanco que está dentro del logo. Con «Sensibilidad»
-  ajustas cuánto borra. Si el logo es claro (letras blancas), conserva el fondo solo para que se vea.
-- **Recorta los márgenes vacíos**, para que el logo ocupe el mayor espacio posible del recuadro.
-- **Tamaño dentro del recuadro** (50–100 %, recomendado 90 %) y vista previa exacta en celular y computadora.
-- Avisa si el logo es chico, vertical, JPG o con fondo de foto.
+## Slider de logos (editor para quitar el fondo, estilo remove.bg)
+En el panel → **Slider** → **＋ Subir logo…** (o ✎ en un logo ya guardado) se abre un editor que:
+- **Quita el fondo solo al abrir** (como remove.bg). Tres modos:
+  - **✨ Automático** (ideal para logos): borra el fondo liso, con degradado o con sombra, **incluido el
+    fondo dentro de las letras** (el centro de la «O», «A», «D»…). Bordes suaves y sin halo.
+  - **🧠 Con IA**: para fotos o fondos difíciles. La IA (U²-Net-p, licencia Apache 2.0, archivo
+    `modelos/u2netp.onnx`, 4.6 MB) corre en el navegador: la imagen **no se envía a ningún servidor**.
+  - **Sin quitar**: deja el fondo original.
+- **Retoques**: 🪄 **Varita** (toca un color para borrarlo, o en toda la imagen), 🧽 **Borrar** y
+  🖌️ **Restaurar** con pincel (dedo o mouse), **Deshacer** y **Empezar de nuevo**.
+- Vista previa sobre **cuadros / blanco / oscuro** y botón **Ver original** para comparar.
+- **Recorta los márgenes vacíos**, **Tamaño dentro del recuadro** (50–100 %, recomendado 90 %) y vista
+  previa exacta en celular y computadora.
+- Avisa si el logo es chico, vertical o si una parte blanca no se verá sobre el recuadro blanco.
 Medida recomendada para pedir a los proveedores: **800 × 400 px** (mínimo 600 × 300), horizontal,
-**PNG con fondo transparente**. En la lista puedes cambiar el tamaño (✎), el orden (◀ ▶) o quitarlo.
+**PNG con fondo transparente**. En la lista puedes editar (✎), cambiar el orden (◀ ▶) o quitar cada logo.
+> Los logos agregados por **URL de otra página** solo se pueden editar si esa página lo permite; si no,
+> descárgalo y súbelo con «＋ Subir logo…».
 
 ## Diseño, logo y fotos
 El color principal por defecto es el naranja CANIRAC **#EE7623** (se cambia en *Apariencia → Color principal*).

@@ -271,8 +271,16 @@
     </div>
     <div class="le-body">
       <div class="le-previews">
-        <div class="le-label">Resultado <small>(los cuadros grises = transparente)</small></div>
-        <div class="le-checker"><canvas id="leCanvas"></canvas><div class="le-busy" id="leBusy">Procesando…</div></div>
+        <div class="le-viewbar" id="leViewbar">
+          <div class="le-seg" id="leBgSel" role="group" aria-label="Fondo de la vista previa">
+            <button type="button" data-bg="checker" class="on" title="Cuadros = transparente">▦</button>
+            <button type="button" data-bg="white" title="Fondo blanco">Blanco</button>
+            <button type="button" data-bg="dark" title="Fondo oscuro">Oscuro</button>
+          </div>
+          <button type="button" class="le-compare" id="leCompare" aria-pressed="false">Ver original</button>
+        </div>
+        <div class="le-checker" id="leStage"><canvas id="leCanvas"></canvas><div class="le-busy" id="leBusy">Procesando…</div></div>
+        <small class="le-hint" id="leHint">Los cuadros grises son la parte transparente.</small>
         <div class="le-label">Así se verá en el slider</div>
         <div class="le-chips">
           <figure><div class="mq-item le-chip"><img id="leChipM" alt=""></div><figcaption>Celular</figcaption></figure>
@@ -281,10 +289,30 @@
       </div>
       <div class="le-controls">
         <div class="le-proc" id="leProc">
-          <label class="check"><input type="checkbox" id="leRemove"> <span><b>Eliminar fondo</b> <small id="leBgInfo"></small></span></label>
+          <div class="le-label">1. Quitar el fondo <small id="leBgInfo"></small></div>
+          <div class="le-methods" role="group" aria-label="Método para quitar el fondo">
+            <button type="button" class="le-m" data-metodo="auto"><b>✨ Automático</b><small>Ideal para logos</small></button>
+            <button type="button" class="le-m" data-metodo="ia"><b>🧠 Con IA</b><small>Fotos y fondos difíciles</small></button>
+            <button type="button" class="le-m" data-metodo="ninguno"><b>Sin quitar</b><small>Dejar el fondo</small></button>
+          </div>
           <div class="field le-sens" id="leSensRow">
-            <label>Sensibilidad del borrado <small>(súbela si queda fondo; bájala si se borra parte del logo)</small></label>
+            <label>Sensibilidad <small>(súbela si queda fondo; bájala si se borra parte del logo)</small></label>
             <div class="range-row"><input type="range" id="leSens" min="2" max="70" step="1" value="26"><b id="leSensV">26</b></div>
+          </div>
+          <label class="check" id="leHolesRow"><input type="checkbox" id="leHoles" checked> <span><b>Quitar también el fondo dentro de letras y figuras</b> <small>— por ejemplo el centro de la «O»</small></span></label>
+          <div class="le-label">2. Retoques <small>(toca o pinta sobre la imagen)</small></div>
+          <div class="le-tools" role="group" aria-label="Herramientas de retoque">
+            <button type="button" class="le-t" data-tool="varita" title="Toca un color de la imagen para borrarlo">🪄 Varita</button>
+            <button type="button" class="le-t" data-tool="borrar" title="Pinta para borrar">🧽 Borrar</button>
+            <button type="button" class="le-t" data-tool="restaurar" title="Pinta para recuperar partes del logo">🖌️ Restaurar</button>
+          </div>
+          <div class="le-toolopts" id="leToolOpts" hidden>
+            <label class="check" id="leGlobalRow"><input type="checkbox" id="leGlobal"> <span><b>Borrar ese color en toda la imagen</b></span></label>
+            <div class="field" id="leBrushRow"><label>Tamaño del pincel</label><div class="range-row"><input type="range" id="leBrush" min="3" max="60" step="1" value="16"><b id="leBrushV">16</b></div></div>
+          </div>
+          <div class="le-undo">
+            <button type="button" class="btn-soft" id="leUndo" disabled>↶ Deshacer</button>
+            <button type="button" class="btn-soft" id="leReset">Empezar de nuevo</button>
           </div>
           <label class="check"><input type="checkbox" id="leTrim" checked> <span><b>Recortar márgenes vacíos</b> <small>— el logo ocupa más espacio</small></span></label>
         </div>
@@ -1104,17 +1132,17 @@ function renderSlider(){
   document.getElementById("slCount").textContent = `${n} logo${n!==1?"s":""} en el slider`;
   el.innerHTML = n
     ? SITE.slider.map((it,i)=>`<div class="sl-item">
-        <button class="mq-item lg sl-prev" data-sledit="${i}" title="Ajustar tamaño">${chipImg(it.url, it.zoom)}</button>
+        <button class="mq-item lg sl-prev" data-sledit="${i}" title="Editar logo">${chipImg(it.url, it.zoom)}</button>
         <div class="sl-meta"><small>${it.zoom}% · posición ${i+1}</small>
           <span class="sl-acts">
             <button class="icon-btn" data-slmove="${i}" data-dir="-1" title="Mover antes" ${i===0?"disabled":""}>◀</button>
             <button class="icon-btn" data-slmove="${i}" data-dir="1" title="Mover después" ${i===n-1?"disabled":""}>▶</button>
-            <button class="icon-btn" data-sledit="${i}" title="Ajustar tamaño">${ICONS.edit}</button>
+            <button class="icon-btn" data-sledit="${i}" title="Editar logo (fondo y tamaño)">${ICONS.edit}</button>
             <button class="icon-btn del" data-slrm="${i}" title="Quitar">${ICONS.trash}</button>
           </span></div>
       </div>`).join("")
     : `<div class="acc-empty">Aún no hay logos. Toca <b>«＋ Subir logo…»</b> para agregar el primero.</div>`;
-  el.querySelectorAll("[data-sledit]").forEach(b=>b.onclick=()=>openSizeEditor(+b.dataset.sledit));
+  el.querySelectorAll("[data-sledit]").forEach(b=>b.onclick=()=>openSliderItem(+b.dataset.sledit));
   el.querySelectorAll("[data-slmove]").forEach(b=>b.onclick=async()=>{
     const i=+b.dataset.slmove, j=i+(+b.dataset.dir); if(j<0||j>=SITE.slider.length) return;
     [SITE.slider[i],SITE.slider[j]]=[SITE.slider[j],SITE.slider[i]];
@@ -1129,7 +1157,7 @@ function renderSlider(){
 document.getElementById("slAddUrl").onclick = ()=>{
   const u = safeUrl(document.getElementById("slUrl").value.trim());
   if(!u || !/^https?:/i.test(u)){ toast("Escribe una URL válida (https://…)","err"); return; }
-  openSizeEditor(-1, u);
+  openUrlItem(u);
 };
 document.getElementById("slFile").onchange = e=>{
   const f=e.target.files[0]; e.target.value="";
@@ -1154,86 +1182,237 @@ function leNotes(list){
   $le("leNotes").innerHTML = list.map(n=>`<div class="le-note ${n.nivel}">${escapeHtml(n.txt)}</div>`).join("");
 }
 
-// Nuevo logo desde archivo: se procesa en el navegador antes de subirlo
-async function openLogoEditor(file){
-  if(!/^image\//.test(file.type||"") && !/\.(png|jpe?g|webp|svg)$/i.test(file.name||"")){ toast("Ese archivo no es una imagen","err"); return; }
+// Abre el editor con una imagen (archivo nuevo, logo ya guardado o URL).
+// idx >= 0 → reemplaza ese logo del slider; idx = -1 → se agrega uno nuevo.
+async function openLogoEditor(file, { idx = -1, zoom = ZOOM_DEF, url = "" } = {}){
+  if(file && !/^image\//.test(file.type||"") && !/\.(png|jpe?g|webp|svg)$/i.test(file.name||"")){ toast("Ese archivo no es una imagen","err"); return; }
   let img;
   try{ img = await LT.loadImage(URL.createObjectURL(file)); }
   catch(e){ toast("No se pudo leer la imagen. Si es de iPhone (HEIC), súbela en PNG o JPG.","err",6000); return; }
   const base = LT.toCanvas(img);
   const info = LT.analyze(base);
-  LE = { mode:"nuevo", base, info, srcW: img.naturalWidth||img.width, srcH: img.naturalHeight||img.height,
-         esJpg: /jpe?g$/i.test(file.type||file.name||""), result:null, token:0 };
-  $le("leTitle").textContent = "Ajustar logo del slider";
-  $le("leProc").hidden = false;
-  $le("leCanvas").parentElement.hidden = false;
-  const transparente = info.tipo === "transparente";
-  $le("leRemove").checked = info.tipo === "liso";
-  $le("leRemove").disabled = transparente;
-  $le("leBgInfo").textContent = transparente ? "— ya tiene fondo transparente ✓"
-    : info.tipo === "liso" ? `— se detectó un fondo de un solo color` : "— fondo con varios colores: revisa el resultado";
+  const bc = LT.borderColors(base);
+  LE = { mode: idx >= 0 ? "editar" : (url ? "url" : "nuevo"), procesable: true, idx, url, base, info,
+         bgs: null, alpha: new Uint8ClampedArray(base.width*base.height).fill(255), border: bc,
+         srcW: img.naturalWidth||img.width, srcH: img.naturalHeight||img.height,
+         esJpg: /jpe?g$/i.test(file.type||file.name||""), metodo: "ninguno", tool: "", undo: [], aiM: null,
+         cambio: idx < 0, result: null, token: 0, nota: "" };
+  $le("leTitle").textContent = idx >= 0 ? "Editar logo del slider" : "Ajustar logo del slider";
+  $le("leProc").hidden = false; $le("leViewbar").hidden = false; $le("leHint").hidden = false;
+  $le("leStage").hidden = false;
+  $le("leBgInfo").textContent = info.tipo === "transparente" ? "— ya tiene fondo transparente ✓" : "";
   $le("leSens").value = 26; $le("leSensV").textContent = "26";
-  $le("leTrim").checked = true;
-  $le("leZoom").value = ZOOM_DEF;
+  $le("leHoles").checked = true; $le("leTrim").checked = true; $le("leGlobal").checked = false;
+  $le("leZoom").value = zoom;
+  leSetTool(""); leCompare(false);
+  $le("leBgSel").querySelector('[data-bg="checker"]').click();
+  $le("leBgSel").querySelector('[data-bg="checker"]').click();
   leShow(true);
-  await leProcess();
+  // Igual que remove.bg: el fondo se quita solo al abrir (si no es transparente ya)
+  if(info.tipo === "transparente") await leMetodo("ninguno", { auto:true });
+  else await leMetodo("auto", { auto:true });
 }
-// Ajustar tamaño de un logo ya guardado (idx) o de una URL nueva (idx = -1)
-function openSizeEditor(idx, url){
-  const it = idx >= 0 ? slItem(SITE.slider[idx]) : { url, zoom: ZOOM_DEF };
-  LE = { mode: idx >= 0 ? "editar" : "url", idx, url: it.url };
+// Logo ya guardado: se intenta abrir completo (para quitarle el fondo); si el
+// servidor no deja leer la imagen, solo se puede cambiar el tamaño.
+async function openSliderItem(idx){
+  const it = slItem(SITE.slider[idx]);
+  const blob = await leFetchBlob(it.url);
+  if(blob) return openLogoEditor(new File([blob], "logo."+(blob.type.split("/")[1]||"png"), { type: blob.type||"image/png" }), { idx, zoom: it.zoom });
+  openSizeEditor(idx, it.url, "Este logo está guardado en un servidor que no permite editarlo. Para quitarle el fondo, descárgalo y vuelve a subirlo con «＋ Subir logo…»; luego borra el anterior.");
+}
+async function openUrlItem(url){
+  const blob = await leFetchBlob(url);
+  if(blob) return openLogoEditor(new File([blob], "logo."+(blob.type.split("/")[1]||"png"), { type: blob.type||"image/png" }), { url });
+  openSizeEditor(-1, url, "Esa página no deja editar sus imágenes, así que no se le puede quitar el fondo. Para eso, descarga el logo y súbelo con «＋ Subir logo…».");
+}
+async function leFetchBlob(url){
+  try{
+    const r = await fetch(url, { mode:"cors", cache:"no-store" });
+    if(!r.ok) return null;
+    const b = await r.blob();
+    return /^image\//.test(b.type) ? b : null;
+  }catch(e){ return null; }
+}
+// Solo tamaño (cuando la imagen no se puede leer)
+function openSizeEditor(idx, url, aviso){
+  LE = { mode: idx >= 0 ? "editar" : "url", procesable: false, idx, url };
   $le("leTitle").textContent = idx >= 0 ? "Tamaño del logo en el slider" : "Agregar logo desde URL";
-  $le("leProc").hidden = true;
-  $le("leCanvas").parentElement.hidden = true;
-  $le("leZoom").value = it.zoom;
-  lePaintChips(it.url);
-  leNotes([{ nivel:"info", txt: idx >= 0 ? "Mueve «Tamaño dentro del recuadro» y guarda." : "Las imágenes desde URL no se pueden recortar ni quitarles el fondo. Para eso, descárgala y súbela con «＋ Subir logo…»." }]);
+  $le("leProc").hidden = true; $le("leViewbar").hidden = true; $le("leHint").hidden = true;
+  $le("leStage").hidden = true;
+  $le("leZoom").value = idx >= 0 ? slItem(SITE.slider[idx]).zoom : ZOOM_DEF;
+  lePaintChips(url);
+  leNotes([{ nivel:"info", txt: aviso || "Mueve «Tamaño dentro del recuadro» y guarda." }]);
   leShow(true);
 }
 
-// Procesa con las opciones actuales (se repite al mover los controles)
-let leTimer = null;
-function leSchedule(){ clearTimeout(leTimer); leTimer = setTimeout(leProcess, 120); }
-async function leProcess(){
-  if(!LE || LE.mode !== "nuevo") return;
-  const token = ++LE.token;
-  $le("leBusy").classList.add("on");
+// ---------- Métodos para quitar el fondo ----------
+function lePushUndo(){ if(!LE) return; LE.undo.push({ alpha: LE.alpha.slice(), bgs: LE.bgs, metodo: LE.metodo }); if(LE.undo.length > 25) LE.undo.shift(); $le("leUndo").disabled = false; }
+async function leMetodo(metodo, { auto = false, recalc = false } = {}){
+  if(!LE || !LE.procesable) return;
+  const E = LE;
+  if(!recalc) lePushUndo();
+  if(auto) { E.undo = []; $le("leUndo").disabled = true; }
+  E.metodo = metodo; E.cambio = E.cambio || !auto; E.nota = "";
+  document.querySelectorAll("#leProc .le-m").forEach(b=>b.classList.toggle("on", b.dataset.metodo === metodo));
+  const sens = +$le("leSens").value, huecos = $le("leHoles").checked;
+  $le("leSensRow").classList.toggle("off", metodo === "ninguno");
+  $le("leHolesRow").classList.toggle("off", metodo === "ninguno");
+  leBusy(metodo === "ia" && !E.aiM ? "Preparando la IA… (solo la primera vez tarda un poco)" : "Quitando el fondo…");
   await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,0)));
-  const sens = +$le("leSens").value, quitar = $le("leRemove").checked && LE.info.tipo !== "transparente";
-  $le("leSensRow").classList.toggle("off", !quitar);
-  // copia de trabajo
-  let c = document.createElement("canvas"); c.width = LE.base.width; c.height = LE.base.height;
-  c.getContext("2d").drawImage(LE.base, 0, 0);
-  if(quitar) LT.removeBackground(c, LE.info.bg, sens);
-  if($le("leTrim").checked) c = LT.trim(c, (!quitar && LE.info.tipo !== "transparente") ? LE.info.bg : null, sens);
+  try{
+    if(metodo === "ninguno"){
+      E.alpha = new Uint8ClampedArray(E.base.width*E.base.height).fill(255); E.bgs = null;
+    } else if(metodo === "auto"){
+      const bc = E.border;
+      if(E.info.tipo === "transparente"){ E.alpha.fill(255); E.bgs = null; E.nota = "La imagen ya tenía fondo transparente."; }
+      else if(bc.bgs.length && bc.cobertura >= 0.7){
+        E.bgs = bc.bgs; E.alpha = LT.colorMask(E.base, bc.bgs, sens, { huecos });
+      } else {
+        // Fondo con muchos colores (foto, degradado): se usa la IA
+        if(!E.aiM) E.aiM = await LT.aiMask(E.base);
+        const r = LT.aiAlpha(E.base, E.aiM, sens, { huecos }); E.alpha = r.alpha; E.bgs = r.bgs;
+        E.nota = "El fondo tiene varios colores: se usó la IA. Revisa el resultado y retoca con la varita o el pincel si hace falta.";
+      }
+    } else if(metodo === "ia"){
+      if(!E.aiM) E.aiM = await LT.aiMask(E.base);
+      const r = LT.aiAlpha(E.base, E.aiM, sens, { huecos }); E.alpha = r.alpha; E.bgs = r.bgs;
+    }
+  }catch(e){
+    console.warn("Quitar fondo:", e);
+    toast(metodo === "ia" ? "No se pudo cargar la IA (revisa tu conexión). Usa «Automático» o la varita." : "No se pudo quitar el fondo","err",6000);
+    if(LE !== E) return;
+    if(E.undo.length) leUndo(true); else E.metodo = "ninguno";
+  }
+  if(LE !== E) return;
+  if(E.metodo !== "ninguno" && LT.removedShare(E.alpha) < 0.003 && E.info.tipo !== "transparente" && !E.nota)
+    E.nota = "No se encontró un fondo para quitar. Toca el fondo con la 🪄 Varita o sube la sensibilidad.";
+  leRender();
+}
+function leUndo(silencioso){
+  if(!LE || !LE.undo.length) return;
+  const u = LE.undo.pop(); LE.alpha = u.alpha; LE.bgs = u.bgs; LE.metodo = u.metodo; LE.cambio = true;
+  document.querySelectorAll("#leProc .le-m").forEach(b=>b.classList.toggle("on", b.dataset.metodo === LE.metodo));
+  $le("leUndo").disabled = !LE.undo.length;
+  if(silencioso !== true) leRender();
+}
+
+// ---------- Vista previa ----------
+function leBusy(txt){ $le("leBusy").textContent = txt || "Procesando…"; $le("leBusy").classList.toggle("on", !!txt); }
+let leExportTimer = null;
+function leRender({ rapido = false } = {}){
+  if(!LE || !LE.procesable) return;
+  LE.comp = LT.compose(LE.base, LE.alpha, LE.bgs);
+  const cv = $le("leCanvas");
+  if(cv.width !== LE.base.width || cv.height !== LE.base.height){ cv.width = LE.base.width; cv.height = LE.base.height; }
+  const ctx = cv.getContext("2d"); ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.drawImage(LE.viendoOriginal ? LE.base : LE.comp, 0, 0);
+  leBusy("");
+  clearTimeout(leExportTimer);
+  leExportTimer = setTimeout(leExport, rapido ? 260 : 0);
+}
+async function leExport(){
+  if(!LE || !LE.procesable || !LE.comp) return;
+  const token = ++LE.token;
+  let c = LE.comp;
+  if($le("leTrim").checked) c = LT.trim(c, LE.metodo === "ninguno" && LE.info.tipo !== "transparente" && LE.border.bgs[0] ? LE.border.bgs[0] : null, +$le("leSens").value);
   const res = await LT.exportPng(c);
-  if(!LE || token !== LE.token) return; // llegó otro cambio mientras procesaba
+  if(!LE || token !== LE.token) return; // llegó otro cambio mientras exportaba
   LE.result = res; LE.canvas = c;
-  // Vista del resultado sobre cuadros (transparencia visible)
-  const cv = $le("leCanvas"); cv.width = res.width; cv.height = res.height;
-  const img = await LT.loadImage(res.dataUrl); cv.getContext("2d").clearRect(0,0,cv.width,cv.height); cv.getContext("2d").drawImage(img,0,0);
   lePaintChips(res.dataUrl);
-  const casiBlanco = quitar && leMostlyWhite(c);
-  // Primera vez: si sin fondo el logo quedaría blanco sobre blanco, se deja el fondo automáticamente
-  if(casiBlanco && !LE.revisado){ LE.revisado = true; LE.fondoConservado = true; $le("leRemove").checked = false; return leProcess(); }
-  LE.revisado = true;
-  const notes = LT.qualityNotes({ srcW: LE.srcW, srcH: LE.srcH, outW: res.width, outH: res.height, tipo: LE.info.tipo, esJpg: LE.esJpg });
-  if(casiBlanco) notes.unshift({ nivel:"err", txt:"Sin su fondo, el logo quedó casi blanco y no se verá sobre el recuadro blanco del slider. Desactiva «Eliminar fondo»." });
-  else if(LE.fondoConservado && !quitar) notes.unshift({ nivel:"info", txt:"Se conservó el fondo porque el logo es claro: sin él no se vería sobre el recuadro blanco del slider." });
-  leNotes(notes);
-  $le("leBusy").classList.remove("on");
+  const notes = LT.qualityNotes({ srcW: LE.srcW, srcH: LE.srcH, outW: res.width, outH: res.height, tipo: LE.metodo === "ninguno" ? "transparente" : LE.info.tipo, esJpg: false });
+  const blanco = LE.metodo !== "ninguno" ? LT.whiteShare(c) : 0;
+  if(blanco > 0.8) notes.unshift({ nivel:"err", txt:"Sin su fondo el logo quedó casi blanco y no se verá sobre el recuadro blanco del slider. Elige «Sin quitar» para dejar su fondo." });
+  else if(blanco > 0.12) notes.unshift({ nivel:"warn", txt:"Una parte del logo es blanca y no se verá sobre el recuadro blanco del slider. Si es importante, elige «Sin quitar» o restaura esa zona con 🖌️ Restaurar." });
+  // Si quedó algo blanco, la vista previa cambia a fondo oscuro para que se vea
+  if(blanco > 0.12 && !LE.fondoAuto){ LE.fondoAuto = true; const b = $le("leBgSel").querySelector('[data-bg="dark"]'); if(b) b.click(); }
+  if(LE.nota) notes.unshift({ nivel:"info", txt: LE.nota });
+  const lista = notes.filter(n => !(n.nivel === "warn" && /fondo tiene varios colores/.test(n.txt)));
+  if(!lista.some(n => n.nivel !== "info")) lista.push({ nivel:"ok", txt:`Buena calidad (${LE.srcW} × ${LE.srcH} px). Se verá nítido en celulares y computadoras.` });
+  leNotes(lista);
 }
-// ¿Lo que quedó visible es casi todo blanco? (p. ej. letras blancas sobre un fondo de color)
-function leMostlyWhite(c){
-  const d = c.getContext("2d").getImageData(0,0,c.width,c.height).data;
-  let n=0, claro=0;
-  for(let i=0;i<d.length;i+=16){ if(d[i+3]>128){ n++; if(d[i]>225 && d[i+1]>225 && d[i+2]>225) claro++; } }
-  return n>0 && claro/n > 0.8;
+function leCompare(on){
+  if(!LE) return;
+  LE.viendoOriginal = !!on;
+  $le("leCompare").classList.toggle("on", !!on); $le("leCompare").setAttribute("aria-pressed", on?"true":"false");
+  $le("leCompare").textContent = on ? "Ver sin fondo" : "Ver original";
+  if(LE.procesable && LE.comp){ const cv=$le("leCanvas"), ctx=cv.getContext("2d"); ctx.clearRect(0,0,cv.width,cv.height); ctx.drawImage(on ? LE.base : LE.comp, 0, 0); }
 }
-["leRemove","leTrim"].forEach(id=>$le(id).addEventListener("change", leSchedule));
+$le("leCompare").onclick = ()=> leCompare(!(LE && LE.viendoOriginal));
+$le("leBgSel").addEventListener("click", e=>{
+  const b = e.target.closest("[data-bg]"); if(!b) return;
+  $le("leBgSel").querySelectorAll("[data-bg]").forEach(x=>x.classList.toggle("on", x===b));
+  $le("leStage").dataset.bg = b.dataset.bg;
+});
+
+// ---------- Retoques: varita, borrar, restaurar ----------
+function leSetTool(t){
+  if(LE) LE.tool = t;
+  document.querySelectorAll("#leProc .le-t").forEach(b=>b.classList.toggle("on", b.dataset.tool === t && !!t));
+  $le("leToolOpts").hidden = !t;
+  $le("leGlobalRow").hidden = t !== "varita";
+  $le("leBrushRow").hidden = !(t === "borrar" || t === "restaurar");
+  $le("leStage").classList.toggle("tool", !!t);
+  $le("leStage").dataset.tool = t || "";
+  $le("leHint").textContent = t === "varita" ? "Toca el color del fondo que quieras borrar."
+    : t === "borrar" ? "Pinta con el dedo o el mouse sobre lo que quieras borrar."
+    : t === "restaurar" ? "Pinta sobre las partes del logo que se borraron por error."
+    : "Los cuadros grises son la parte transparente.";
+}
+document.querySelectorAll("#leProc .le-t").forEach(b=>b.onclick = ()=> leSetTool(LE && LE.tool === b.dataset.tool ? "" : b.dataset.tool));
+document.querySelectorAll("#leProc .le-m").forEach(b=>b.onclick = ()=> leMetodo(b.dataset.metodo));
+$le("leUndo").onclick = ()=> leUndo();
+$le("leReset").onclick = ()=>{ if(!LE) return; leMetodo(LE.info.tipo === "transparente" ? "ninguno" : "auto"); };
+$le("leBrush").addEventListener("input", ()=>{ $le("leBrushV").textContent = $le("leBrush").value; });
+// Coordenadas del dedo/mouse en píxeles de la imagen
+function lePoint(e){
+  const cv = $le("leCanvas"), r = cv.getBoundingClientRect();
+  return { x: Math.max(0, Math.min(cv.width-1, Math.round((e.clientX - r.left) / r.width * cv.width))),
+           y: Math.max(0, Math.min(cv.height-1, Math.round((e.clientY - r.top) / r.height * cv.height))),
+           escala: cv.width / r.width };
+}
+let lePaint = null;
+// Al retocar a mano sobre la imagen original, ya no está seleccionado «Sin quitar»
+function leManual(){ if(LE && LE.metodo === "ninguno"){ LE.metodo = "manual"; document.querySelectorAll("#leProc .le-m").forEach(b=>b.classList.remove("on")); } }
+$le("leCanvas").addEventListener("pointerdown", e=>{
+  if(!LE || !LE.procesable || !LE.tool) return;
+  e.preventDefault();
+  if(LE.viendoOriginal) leCompare(false);
+  const p = lePoint(e);
+  lePushUndo(); LE.cambio = true;
+  if(LE.tool === "varita"){
+    const c = LT.wand(LE.base, LE.alpha, p.x, p.y, +$le("leSens").value, { global: $le("leGlobal").checked });
+    leManual();
+    LE.bgs = (LE.bgs || []).concat([{ r:c.r, g:c.g, b:c.b }]).slice(-6);
+    LE.nota = "";
+    leRender();
+    return;
+  }
+  const r = +$le("leBrush").value * p.escala;
+  lePaint = { last: p, r };
+  leManual();
+  LT.brush(LE.alpha, LE.base.width, LE.base.height, p.x, p.y, r, LE.tool === "borrar");
+  $le("leCanvas").setPointerCapture(e.pointerId);
+  leRender({ rapido:true });
+});
+$le("leCanvas").addEventListener("pointermove", e=>{
+  if(!lePaint || !LE) return;
+  e.preventDefault();
+  const p = lePoint(e), a = lePaint.last, r = lePaint.r;
+  const pasos = Math.max(1, Math.ceil(Math.hypot(p.x-a.x, p.y-a.y) / (r*0.35)));
+  for(let k=1;k<=pasos;k++) LT.brush(LE.alpha, LE.base.width, LE.base.height, a.x+(p.x-a.x)*k/pasos, a.y+(p.y-a.y)*k/pasos, r, LE.tool === "borrar");
+  lePaint.last = p;
+  if(!lePaint.raf) lePaint.raf = requestAnimationFrame(()=>{ if(lePaint) lePaint.raf = 0; leRender({ rapido:true }); });
+});
+["pointerup","pointercancel"].forEach(ev=>$le("leCanvas").addEventListener(ev, ()=>{ if(lePaint){ lePaint = null; leRender(); } }));
+
+// Sensibilidad y huecos: se recalcula el método actual (sin perder la IA ya calculada)
+let leTimer = null;
+function leSchedule(){ clearTimeout(leTimer); leTimer = setTimeout(()=>{ if(LE && (LE.metodo === "auto" || LE.metodo === "ia")) leMetodo(LE.metodo, { recalc:true }); }, 160); }
+$le("leHoles").addEventListener("change", leSchedule);
+$le("leTrim").addEventListener("change", ()=>{ if(LE){ LE.cambio = true; leExport(); } });
 $le("leSens").addEventListener("input", ()=>{ $le("leSensV").textContent = $le("leSens").value; leSchedule(); });
 $le("leZoom").addEventListener("input", ()=>{
-  const src = LE && (LE.mode === "nuevo" ? (LE.result && LE.result.dataUrl) : LE.url);
+  const src = LE && (LE.procesable ? (LE.result && LE.result.dataUrl) : LE.url);
   if(src) lePaintChips(src);
 });
 $le("leSave").onclick = async ()=>{
@@ -1241,21 +1420,21 @@ $le("leSave").onclick = async ()=>{
   const zoom = clampZoom($le("leZoom").value), btn = $le("leSave");
   btn.disabled = true; const prev = btn.textContent; btn.textContent = "Guardando…";
   try{
-    if(LE.mode === "editar"){
-      SITE.slider[LE.idx] = { url: LE.url, zoom };
-    } else if(LE.mode === "url"){
-      SITE.slider.push({ url: LE.url, zoom });
-    } else {
-      if(!LE.result){ toast("Espera a que termine de procesar","err"); return; }
-      let url = "";
+    let url = LE.url || (LE.idx >= 0 ? slItem(SITE.slider[LE.idx]).url : "");
+    // Imagen procesada (nueva, o con cambios de fondo/recorte): se sube como PNG
+    if(LE.procesable && (LE.mode === "nuevo" || LE.mode === "url" || LE.cambio)){
+      if(lePaint || !LE.result){ toast("Espera a que termine de procesar","err"); return; }
+      await leExport();
+      url = "";
       if(store.storageAvailable && store.storageAvailable()){
         try{ url = await store.uploadFile(new File([LE.result.blob], "logo-slider.png", { type:"image/png" }), "slider"); }
         catch(e){ console.warn("Storage:", e); toast("No se pudo subir a Storage; se guardó una copia ligera.","err",5000); }
       }
       if(!url) url = (await LT.exportPng(LE.canvas, 480)).dataUrl; // respaldo sin Storage
-      SITE.slider.push({ url, zoom });
     }
-    if(await saveSiteSafe(LE.mode === "editar" ? "Tamaño actualizado" : "Logo agregado al slider")){
+    if(LE.idx >= 0) SITE.slider[LE.idx] = { url, zoom };
+    else SITE.slider.push({ url, zoom });
+    if(await saveSiteSafe(LE.idx >= 0 ? "Logo actualizado" : "Logo agregado al slider")){
       if(LE.mode === "url") document.getElementById("slUrl").value = "";
       leClose(); renderSlider();
     }
